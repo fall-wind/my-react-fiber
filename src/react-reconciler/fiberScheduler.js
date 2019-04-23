@@ -1,6 +1,6 @@
-import { msToExpirationTime, computeAsyncExpiration } from './expirationTime'
+import { msToExpirationTime, computeAsyncExpiration } from './expirationTime';
 
-const now = Date.now
+const now = Date.now;
 
 // Working Phase
 const NotWorking = 0;
@@ -10,19 +10,19 @@ const FlushSyncPhase = 3;
 const RenderPhase = 4;
 const CommitPhase = 5;
 
-let renderExpirationTime = NoWork
-let workInProgressRoot = 
+let renderExpirationTime = NoWork;
+let workInProgressRoot = null;
 
-let workPhase = NotWorking
-let initialTimeMs = now()
-let currentEventTime = NoWork
+let workPhase = NotWorking;
+let initialTimeMs = now();
+let currentEventTime = NoWork;
 
 export function requestCurrentTime() {
 	if (workPhase === RenderPhase || workPhase === CommitPhase) {
-        // We're inside React, so it's fine to read the actual time.
-        // 1000 * 60 = 60000
-        // 1000 * 60 * 60 = 3600000
-        // 1000 * 60 * 60 * 24 = 86400000
+		// We're inside React, so it's fine to read the actual time.
+		// 1000 * 60 = 60000
+		// 1000 * 60 * 60 = 3600000
+		// 1000 * 60 * 60 * 24 = 86400000
 		return msToExpirationTime(now() - initialTimeMs);
 	}
 	// We're not inside React, so we may be in the middle of a browser event.
@@ -36,14 +36,34 @@ export function requestCurrentTime() {
 }
 
 export function computeExpirationForFiber(currentTime, fiber) {
-    if (workPhase === RenderPhase) {
-        return renderExpirationTime
-    }
-    let expirationTime;
-    // 省略其他代码
-    expirationTime = computeAsyncExpiration(currentTime);
-    if (workInProgressRoot !== null && expirationTime === renderExpirationTime) {
-        expirationTime -= 1
-    }
-    return expirationTime
+	if (workPhase === RenderPhase) {
+		return renderExpirationTime;
+	}
+	let expirationTime;
+	// 省略其他代码
+	expirationTime = computeAsyncExpiration(currentTime);
+	if (
+		workInProgressRoot !== null &&
+		expirationTime === renderExpirationTime
+	) {
+		expirationTime -= 1;
+	}
+	return expirationTime;
+}
+
+// TODO
+export function unbatchedUpdates(fn) {
+    return fn(a);
+	// if (workPhase !== BatchedPhase && workPhase !== FlushSyncPhase) {
+	// 	// We're not inside batchedUpdates or flushSync, so unbatchedUpdates is
+	// 	// a no-op.
+	// 	return fn(a);
+	// }
+	// const prevWorkPhase = workPhase;
+	// workPhase = LegacyUnbatchedPhase;
+	// try {
+	// 	return fn(a);
+	// } finally {
+	// 	workPhase = prevWorkPhase;
+	// }
 }

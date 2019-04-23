@@ -1,5 +1,5 @@
 import { NoWork } from './expirationTime'
-
+import { createHostRootFiber } from './fiber'
 class FiberRootNode {
     constructor(containerInfo) {
         this.current = null;
@@ -23,7 +23,7 @@ class FiberRootNode {
 
 export function createFiberRoot(containerInfo) {
     const root = new FiberRootNode(containerInfo)
-    const uninitializedFiber = createHostRootFiber(isConcurrent);
+    const uninitializedFiber = createHostRootFiber();
     // fiber 的 state属性对应着对应的节点 root的current代表当前的fiber
     root.current = uninitializedFiber
     uninitializedFiber.stateNode = root
