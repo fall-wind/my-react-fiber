@@ -9,8 +9,14 @@ react 版本 16.8.6; 目前master 版本已经合并新的`scheduler`；先实�
 
 # TODO
 
-- currentTime计算
-- expirationTime
-- update以及updateQueue
+## 功能
+- [x] currentTime计算
+- [x] expirationTime
+- [x] update以及updateQueue
 - fiber的数据结构 遍历等等
-- 其他
+- hooks
+
+## 环境
+- 打包成多包
+- 项目启动调试
+- 跑通项目 测试用例？

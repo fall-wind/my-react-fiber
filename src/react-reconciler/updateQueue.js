@@ -1,3 +1,5 @@
+import { NoWork } from "./expirationTime";
+
 export const UpdateState = 0;
 export const ReplaceState = 1;
 export const ForceUpdate = 2;
@@ -63,7 +65,7 @@ function cloneUpdateQueue(currentQueue) {
 }
 
 export function equeueUpdate(fiber, update) {
-	// 先找到workInProcess上的updateQueue
+	// 先找到workInProgress上的updateQueue
 	const alternate = fiber.alternate;
 	// 第一次渲染 alternate为null ？
 	let queue1;
@@ -116,4 +118,160 @@ export function equeueUpdate(fiber, update) {
 			queue2.lastUpdate = update;
 		}
 	}
+}
+
+function cloneUpdateQueue(currentQueue) {
+	const queue = {
+		baseState: currentQueue.baseState,
+		firstUpdate: currentQueue.firstUpdate,
+		lastUpdate: currentQueue.lastUpdate,
+
+		// TODO: With resuming, if we bail out and resuse the child tree, we should
+		// keep these effects.
+		firstCapturedUpdate: null,
+		lastCapturedUpdate: null,
+
+		firstEffect: null,
+		lastEffect: null,
+
+		firstCapturedEffect: null,
+		lastCapturedEffect: null,
+	};
+	return queue;
+}
+
+function ensureWorkInProgressQueueIsAClone(workInProgress, queue) {
+	const current = workInProgress.alternate;
+	if (current !== null) {
+		// 如果两条更新队列相同 我们clone一下
+		if (queue === current.updateQueue) {
+			queue = workInProgress.updateQueue = cloneUpdateQueue(queue);
+		}
+	}
+	return queue;
+}
+
+function getStateFromUpdate(
+    workInProgress,
+    queue,
+    update,
+    prevState,
+    nextProps,
+    instance,
+) {
+    switch (update.tag) {
+        case ReplaceState: {
+            const payload = update.payload
+            if (typeof payload === 'function') {
+                const nextState = payload.call(instance, prevState, nextProps)
+            }
+            return nextState
+        }
+        case CaptureUpdate: {
+            // TODO
+        }
+        case UpdateState: {
+            const payload = update.payload
+            let partialState;
+            if (typeof payload === 'function') {
+                partialState = payload.call(instance, prevState, nextProps);
+            } else {
+                partialState = payload
+            }
+            if (partialState === null || partialState === undefined) {
+                return prevState
+            }
+            return Object.assign({}, prevState, partialState)
+        }
+        case ForceUpdate: {
+            hasForceUpdate = true;
+            return prevState;
+        }
+    }
+    return prevState
+}
+
+// 三个时间
+export function processUpdateQueue(
+	workInProgress,
+	queue,
+	props,
+	instance,
+	renderExpirationTime,
+) {
+    queue = ensureWorkInProgressQueueIsAClone(workInProgress, queue);
+    
+    // 当我遍历queue的时候这些值可能发生变化 什么情况下会发生变化？
+    let newBaseState = queue.baseState
+    let newFirstUpdate = null
+    let nextExpirationTime = NoWork
+
+    // 遍历列表更新计算结果
+    let update = queue.firstUpdate;
+    let resultState = newBaseState;
+    while (update !== null) {
+        const updateExpirationTime = queue.expirationTime
+        if (updateExpirationTime < renderExpirationTime) {
+            // 这个更新优先级不够 跳过
+            if (newFirstUpdate === null) {
+                newFirstUpdate = update
+                newBaseState = resultState
+            }
+            // 因为这个更新任然存在list中 更新剩下的更新时间
+            if (nextExpirationTime < updateExpirationTime) {
+                nextExpirationTime = updateExpirationTime
+            }
+        } else {
+            // 这个更新有足够高的优先级 处理它计算出新的结果
+            resultState = getStateFormUpdate(
+                workInProgress,
+                queue,
+                update,
+                resultState,
+                props,
+                instance,
+            )
+            const callback = update.callback
+            if (callback !== null) {
+                workInProgress.effectTag |= Callback
+                // 将它置为null 以防止在中断的render中被计算
+                update.nextEffect = null
+                // 将 这个更新加到 queue的effect上
+                if (queue.lastEffect === null) {
+                    queue.firstEffect = queue.lastEffect = update;
+                } else {
+                    queue.lastEffect.nextEffect = update;
+                    queue.lastEffect = update;
+                }
+            }
+        }
+        update = update.next
+    }
+
+    // TODO capture update
+
+    if (newFirstUpdate === null) {
+        queue.lastUpdate = null;
+    }
+
+    // TODO capture
+    workInProgress.effectTag |= Callback
+    
+    if (newFirstUpdate === null) {
+        // 说明没有更新被跳过 那就意味着新的更新和 result state相同
+        // 不同怎么办？
+        newBaseState = resultState
+    }
+    queue.baseState = newBaseState
+    queue.firstUpdate = newFirstUpdate
+
+    /**
+     * 将update上剩余最高 优先级的过期时间；
+     * 只有props和context这两个因素决定过期时间 
+     * 在我们处理更新队列时我们已经处于开始阶段 所以我们处理了这些props
+     * 组件中的context 被Scu制定的context是很棘手的？？？
+     * 但是我们不得不考虑到
+     */
+    workInProgress.expirationTime = newExpirationTime
+    workInProgress.memoizedState = resultState;
 }

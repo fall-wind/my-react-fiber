@@ -152,3 +152,11 @@ accTime(249) === accTime(250)
 对于这种情况 React如何处理 我们先待定
 
 所以最后得到的 expirationTime 是一个非常大的值 随着时间向后推移 expirationTime的值会越来越小
+
+## tips
+- 在commit阶段发生的更新 优先级为Sync 即最高的优先级
+- 发生在render阶段的更新应该和正在rendered的work拥有相同的过期时间
+- 没有显示被设置过期时间的上下文，当前有没有执行work，重新计算过期时间
+
+## issue
+什么样的代码能让expirationTime !== Sync
