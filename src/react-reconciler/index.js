@@ -38,6 +38,7 @@ export function updateContainer(
 ) {
     const current = container.current // current 是fiber container是fiberRoot
     const currentTime = requestCurrentTime()
+    
     const expirationTime = computeExpirationForFiber(currentTime, current)
     return updateContainerAtExpirationTime(
         element,

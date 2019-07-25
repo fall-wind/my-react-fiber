@@ -36,3 +36,5 @@ onCommitRoot --> onCommit;
 ```
 
 tmp
+
+// 在浏览器事件中 使用同一个时间

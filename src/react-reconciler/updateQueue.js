@@ -15,6 +15,10 @@ export function createUpdate(expirationTime) {
 	};
 }
 
+export function enqueueUpdate() {
+
+}
+
 function createUpdateQueue(baseState) {
 	const queue = {
 		baseState,

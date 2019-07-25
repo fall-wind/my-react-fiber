@@ -1,11 +1,12 @@
-export const NoWork = 0;
-export const Never = 1;
-export const Sync = MAX_SIGNED_31_BIT_INT;
-
 const MAX_SIGNED_31_BIT_INT = 1073741823;
 
+export const NoWork = 0;
+export const Never = 1;
+export const Sync = MAX_SIGNED_31_BIT_INT
+export const Batched = Sync - 1
+
 const UNIT_SIZE = 10;
-const MAGIC_NUMBER_OFFSET = MAX_SIGNED_31_BIT_INT - 1;
+const MAGIC_NUMBER_OFFSET = Batched - 1;
 
 const LOW_PRIORITY_EXPIRATION = 5000;
 const LOW_PRIORITY_BATCH_SIZE = 250;
@@ -13,6 +14,10 @@ const LOW_PRIORITY_BATCH_SIZE = 250;
 export function msToExpirationTime(ms) {
 	// Always add an offset so that we don't clash with the magic number for NoWork.
 	return MAGIC_NUMBER_OFFSET - ((ms / UNIT_SIZE) | 0);
+}
+
+export function expirationTimeToMs(expirationTime) {
+    return (MAGIC_NUMBER_OFFSET - expirationTime) * UNIT_SIZE;
 }
 
 function ceiling(num, precision) {
