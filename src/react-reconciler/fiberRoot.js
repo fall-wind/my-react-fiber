@@ -1,7 +1,8 @@
 import { NoWork } from './expirationTime'
 import { createHostRootFiber } from './fiber'
+import { noTimeout } from './ReactDOMHostConfig'
 class FiberRootNode {
-    constructor(containerInfo) {
+    constructor(containerInfo, hydrate) {
         this.current = null;
         this.containerInfo = containerInfo;
         this.pendingChildren = null;
@@ -21,9 +22,9 @@ class FiberRootNode {
     }
 }
 
-export function createFiberRoot(containerInfo) {
-    const root = new FiberRootNode(containerInfo)
-    const uninitializedFiber = createHostRootFiber();
+export function createFiberRoot(containerInfo, tag) {
+    const root = new FiberRootNode(containerInfo, tag)
+    const uninitializedFiber = createHostRootFiber(tag);
     // fiber 的 state属性对应着对应的节点 root的current代表当前的fiber
     root.current = uninitializedFiber
     uninitializedFiber.stateNode = root

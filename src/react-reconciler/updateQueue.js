@@ -1,7 +1,17 @@
+import { NoWork } from './expirationTime';
+import {
+	Callback,
+	ShouldCapture,
+	DidCapture,
+} from '../shared/ReactSideEffectTags';
+
 export const UpdateState = 0;
 export const ReplaceState = 1;
 export const ForceUpdate = 2;
 export const CaptureUpdate = 3;
+
+// 在调用processUpdateQueue 被重置
+let hasForceUpdate = false;
 
 export function createUpdate(expirationTime) {
 	return {
@@ -13,10 +23,6 @@ export function createUpdate(expirationTime) {
 		next: null,
 		nextEffect: null,
 	};
-}
-
-export function enqueueUpdate() {
-
 }
 
 function createUpdateQueue(baseState) {
@@ -66,7 +72,125 @@ function cloneUpdateQueue(currentQueue) {
 	return queue;
 }
 
-export function equeueUpdate(fiber, update) {
+function ensureWorkInProgressQueueIsAClone(workInProgress, queue) {
+	const current = workInProgress.alternate;
+	if (current !== null) {
+		// If the work-in-progress queue is equal to the current queue,
+		// we need to clone it first.
+		if (queue === current.updateQueue) {
+			queue = workInProgress.updateQueue = cloneUpdateQueue(queue);
+		}
+	}
+	return queue;
+}
+
+function getStateFromUpdate(
+	workInProgress,
+	queue,
+	update,
+	prevState,
+	nextProps,
+	instance,
+) {
+    console.error(update.tag, 'resultState')
+	switch (update.tag) {
+		case ReplaceState: {
+			const payload = update.payload;
+			if (typeof payload === 'function') {
+				const nextState = payload.call(instance, prevState, nextProps);
+				return nextState;
+			}
+			return payload;
+		}
+		case CaptureUpdate: {
+			workInProgress.effectTag =
+				(workInProgress.effectTag & ~ShouldCapture) | DidCapture;
+		}
+		case UpdateState: {
+			const payload = update.payload;
+			let partialState;
+			if (typeof payload === 'function') {
+				partialState = payload.call(instance, prevState, nextProps);
+			} else {
+				partialState = payload;
+			}
+			if (partialState === null || partialState === undefined) {
+				return prevState;
+			}
+			return Object.assign({}, prevState, partialState);
+		}
+		case ForceUpdate: {
+			hasForceUpdate = true;
+			return prevState;
+		}
+	}
+	return prevState;
+}
+
+export function processUpdateQueue(
+	workInProgress,
+	queue,
+	props,
+	instance,
+	renderExpirationTime,
+) {
+	hasForceUpdate = false;
+	queue = ensureWorkInProgressQueueIsAClone(workInProgress, queue);
+	let newBaseState = queue.baseState;
+	let newFirstUpdate = null;
+	let newExpirationTime = NoWork;
+
+	let update = queue.firstUpdate;
+	let resultState = newBaseState;
+
+	while (update !== null) {
+		const updateExpiprationTime = update.expirationTime;
+		// 异步
+		if (updateExpiprationTime < renderExpirationTime) {
+		} else {
+			// 这个更新有足够高的优先级
+			// 标记更新的事件时间和这个更新阶段相关
+
+			// markRenderEventTimeAndConfig()
+
+			resultState = getStateFromUpdate(
+				workInProgress,
+				queue,
+				update,
+				resultState,
+				props,
+				instance,
+			);
+			const callback = update.callback;
+			if (callback !== null) {
+                // 将更新添加到 effectList 上
+                workInProgress.effectTag != Callback;
+                update.nextEffect = null
+                if (queue.lastEffect === null) {
+                    queue.firstEffect = queue.lastEffect = update
+                } else {
+                    queue.lastEffect.nextEffect = update;
+                    queue.lastEffect = update;
+                }
+            }
+            update = update.next
+		}
+    }
+    
+    // 遍历capture list
+    // TODO
+
+    if (newFirstUpdate === null) {
+        queue.lastUpdate = null
+    }
+
+    queue.baseState = newBaseState
+    queue.firstUpdate = newFirstUpdate;
+    workInProgress.expirationTime = newExpirationTime;
+    workInProgress.memoizedState = resultState;
+}
+
+export function enqueueUpdate(fiber, update) {
 	// 先找到workInProcess上的updateQueue
 	const alternate = fiber.alternate;
 	// 第一次渲染 alternate为null ？
@@ -106,7 +230,6 @@ export function equeueUpdate(fiber, update) {
 		}
 	}
 	// 创建完更新队列之后 向队列中添加update
-	// issue: queue2可能为null吗？
 	if (queue2 === null || queue1 === queue2) {
 		appendUpdateToQueue(queue1, update);
 	} else {

@@ -1,10 +1,18 @@
 import React from './component'
 import { ReactDOM } from './component'
 
-console.error(React, 'XXXXXX')
-
-function App() {
-    return <div>hell0 world</div>
+function Button(props) {
+    const { label } = props
+    return <button>{label}</button>
 }
 
-console.error(<App />, 'l am app...')
+function App(props) {
+    return (
+        <div>
+            <Button label="确定" />
+            <Button label="确定" />
+        </div>
+    )
+}
+
+ReactDOM.render(<App />, document.getElementById('app'))

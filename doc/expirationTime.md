@@ -152,3 +152,20 @@ accTime(249) === accTime(250)
 对于这种情况 React如何处理 我们先待定
 
 所以最后得到的 expirationTime 是一个非常大的值 随着时间向后推移 expirationTime的值会越来越小
+
+
+
+
+## 几个time
+
+- expirationTime
+- childExpirationTime
+- firstPendingTime
+- lastPendingTime
+- pingTime
+- finishedExpirationTime
+- pendingPassiveEffectsExpirationTime
+
+
+PassiveEffects消极的影响？
+

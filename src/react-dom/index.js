@@ -101,7 +101,8 @@ function renderSubtreeIntoContainer(
 	callback,
 ) {
 	let root = container._reactRootContainer;
-	// 获取到container上的 root container 如果不存在 则说明是第一渲染 则创建哟个fiber root 对象
+    // 获取到container上的 root container 如果不存在 则说明是第一渲染 则创建哟个fiber root 对象
+    let fiberRoot;
 	if (!root) {
 		root = container._reactRootContainer = createRootFromDOMContainer(
 			container,
