@@ -92,7 +92,6 @@ function getStateFromUpdate(
 	nextProps,
 	instance,
 ) {
-    console.error(update.tag, 'resultState')
 	switch (update.tag) {
 		case ReplaceState: {
 			const payload = update.payload;

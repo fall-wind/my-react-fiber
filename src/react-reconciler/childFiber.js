@@ -150,7 +150,6 @@ function ChildReconciler(shouldTrackSideEffects) {
 				} else {
 					previousNewFibers.sibling = newFiber;
 				}
-
 			}
             return resultingFirstChild;
 		}
@@ -226,13 +225,8 @@ function ChildReconciler(shouldTrackSideEffects) {
 			newChild = newChild.props.children;
 		}
 
-		const isObject = typeof newChild === 'object' && newChild !== null;
-		console.error(
-			typeof newChild,
-			'typeof newChild',
-			newChild,
-			newChild.$$typeof,
-		);
+        const isObject = typeof newChild === 'object' && newChild !== null;
+        
 		if (isObject) {
 			switch (newChild.$$typeof) {
 				case REACT_ELEMENT_TYPE: {
@@ -266,7 +260,10 @@ function ChildReconciler(shouldTrackSideEffects) {
 				newChild,
 				expirationTime,
 			);
-		}
+        }
+        
+        // newChild === null 删除
+        return deleteRemainingChildren(returnFiber, currentFirstChild);
 	}
 	return reconcileChildFibers;
 }

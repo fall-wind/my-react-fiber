@@ -9,8 +9,8 @@ function Button(props) {
 function App(props) {
     return (
         <div>
-            <Button label="确定" />
-            <Button label="确定" />
+            <Button key="1" label="确定" />
+            <Button key="2" label="取消" />
         </div>
     )
 }

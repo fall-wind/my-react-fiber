@@ -52,7 +52,7 @@ function updateHostComponent(current, workInProgress, renderExpirationTime) {
 
 	let nextChildren = nextProps.children;
 
-	const isDirectTextChild = shouldSetTextContent(type, nextChildren);
+	const isDirectTextChild = shouldSetTextContent(type, nextProps);
 	if (isDirectTextChild) {
 		nextChildren = null;
 	} else if (prevProps !== null && shouldSetTextContent(type, prevProps)) {
@@ -159,7 +159,6 @@ function updateHostRoot(current, workInProgress, renderExpirationTime) {
 		renderExpirationTime,
 	);
 	const nextState = workInProgress.memoizedState;
-	console.error(workInProgress, 'workInProgress...');
 	const nextChildren = nextState.element;
 
 	if (nextChildren === pervChildren) {
