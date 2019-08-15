@@ -1,4 +1,5 @@
 import isCustomComponent from '../shared/isCustomComponent';
+import { TEXT_NODE } from '../shared/HTMLNodeType';
 
 const DANGEROUSLY_SET_INNER_HTML = 'dangerouslySetInnerHTML';
 const SUPPRESS_CONTENT_EDITABLE_WARNING = 'suppressContentEditableWarning';
@@ -61,6 +62,22 @@ export function createElement(type, props) {
 	return domElement;
 }
 
+let setTextContent = function(node, text) {
+	if (text) {
+		let firstChild = node.firstChild;
+
+		if (
+			firstChild &&
+			firstChild === node.lastChild &&
+			firstChild.nodeType === TEXT_NODE
+		) {
+			firstChild.nodeValue = text;
+			return;
+		}
+	}
+	node.textContent = text;
+};
+
 function setInitialDOMProperties(
 	tag,
 	domElement,
@@ -68,18 +85,26 @@ function setInitialDOMProperties(
 	nextProps,
 	isCustomComponentTag,
 ) {
-    for (const propKey in nextProps) {
-        if (nextProps.hasOwnProperty(propKey)) {
-            // const element = object[propsKey];
-            continue
-        }
+	for (const propKey in nextProps) {
+		if (!nextProps.hasOwnProperty(propKey)) {
+			// const element = object[propsKey];
+			continue;
+		}
 
-        const nextProp = nextProps[propKey]
+		const nextProp = nextProps[propKey];
 
-        if (propKey === STYLE) {
-            // TODO
-        }
-    }
+		if (propKey === STYLE) {
+			// TODO
+		} else if (propKey === CHILDREN) {
+			if (typeof nextProp === 'string') {
+				const callSetTextContent =
+					tag !== 'textarea' || nextProp !== '';
+				if (callSetTextContent) {
+					setTextContent(domElement, nextProp);
+				}
+			}
+		}
+	}
 }
 
 export function setInitialProperties(
