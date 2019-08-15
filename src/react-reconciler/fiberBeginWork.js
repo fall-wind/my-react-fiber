@@ -56,7 +56,7 @@ function updateHostComponent(current, workInProgress, renderExpirationTime) {
 	if (isDirectTextChild) {
 		nextChildren = null;
 	} else if (prevProps !== null && shouldSetTextContent(type, prevProps)) {
-		workInProgress.effectTag != ContentReset;
+		workInProgress.effectTag |= ContentReset;
 	}
 
 	if (
@@ -71,7 +71,9 @@ function updateHostComponent(current, workInProgress, renderExpirationTime) {
 		workInProgress,
 		nextChildren,
 		renderExpirationTime,
-	);
+    );
+    
+    console.error(workInProgress.child, 'workInProgress.child', workInProgress)
 
     return workInProgress.child;
 }

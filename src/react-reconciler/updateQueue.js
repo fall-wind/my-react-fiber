@@ -163,7 +163,7 @@ export function processUpdateQueue(
 			const callback = update.callback;
 			if (callback !== null) {
                 // 将更新添加到 effectList 上
-                workInProgress.effectTag != Callback;
+                workInProgress.effectTag |= Callback;
                 update.nextEffect = null
                 if (queue.lastEffect === null) {
                     queue.firstEffect = queue.lastEffect = update

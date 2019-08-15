@@ -265,7 +265,7 @@ function completeUnitOfWork(unitOfWork) {
 
 			if (
 				returnFiber !== null &&
-				(returnFiber.effectTag &= Incomplete) === NoEffect
+				(returnFiber.effectTag & Incomplete) === NoEffect
 			) {
 				// 将子节点的effectList归并待父节点上
 				if (returnFiber.firstEffect === null) {
@@ -297,6 +297,7 @@ function completeUnitOfWork(unitOfWork) {
 		const siblingFiber = workInProgress.sibling;
 
 		if (siblingFiber !== null) {
+            console.error(siblingFiber, 'siblingFiber...')
 			return siblingFiber;
 		}
 
@@ -392,8 +393,10 @@ function renderRoot(root, expirationTime, isSync) {
 
 	root.finishedExpirationTime = expirationTime;
 
-	workInProgressRoot = null;
-
+    workInProgressRoot = null;
+    console.error(root, 'root & finish work')
+    return
+    // TODO
 	switch (workInProgressRootExitStatus) {
 		case RootCompleted: {
 			return commitRoot.bind(null, root);

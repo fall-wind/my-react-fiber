@@ -3,7 +3,7 @@ import {
     setInitialProperties,
     createElement,
 } from '../react-dom/ReactDOMComponent';
-import { precacheFiberNode } from '../react-dom/ReactDOMComponentTree';
+import { precacheFiberNode, updateFiberProps } from '../react-dom/ReactDOMComponentTree';
 
 export const noTimeout = -1;
 

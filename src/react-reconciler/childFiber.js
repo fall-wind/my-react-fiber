@@ -104,7 +104,7 @@ function ChildReconciler(shouldTrackSideEffects) {
 
 	function placeSingleChild(fiber) {
 		if (shouldTrackSideEffects && fiber.alternate === null) {
-			fiber.effectTag != Placement;
+			fiber.effectTag |= Placement;
 		}
 		return fiber;
 	}

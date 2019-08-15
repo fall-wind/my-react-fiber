@@ -5,8 +5,9 @@ import {
 	HostRoot,
 	HostComponent,
 	HostText,
-	HostPortal,
+    HostPortal,
 } from '../shared/ReactWorkTags';
+import { Placement } from '../shared/ReactSideEffectTags'
 import {
 	supportsMutation,
 	createTextInstance,
@@ -33,8 +34,8 @@ function markRef(workInProgress) {
 
 if (supportsMutation) {
 	updateHostContainer = function(parent, workInProgress) {
-		// TODO
-		let node = workInProgress.child;
+        // TODO
+        // NOTHING
 	};
 
 	appendAllChildren = function(
@@ -85,7 +86,7 @@ function completeWork(current, workInProgress, renderExpirationTime) {
 		case FunctionComponent:
 			break;
 		case HostRoot: {
-			popHostContainer(workInProgress);
+			// popHostContainer(workInProgress);
 			// Context
 			const fiberRoot = workInProgress.stateNode;
 			if (fiberRoot.pendingContext) {
@@ -95,7 +96,8 @@ function completeWork(current, workInProgress, renderExpirationTime) {
 			if (current === null || current.child === null) {
 				workInProgress.effectTag &= ~Placement;
 			}
-			updateHostContainer(workInProgress);
+            updateHostContainer(workInProgress);
+            break;
 		}
 		case HostComponent: {
 			// 省略context 服务端渲染代码
@@ -107,8 +109,10 @@ function completeWork(current, workInProgress, renderExpirationTime) {
 				let instance = createInstance(
 					type,
 					newProps,
-					rootContainerInstance,
-					currentHostContext,
+                    // rootContainerInstance,
+                    {},
+                    // currentHostContext,
+                    {},
 					workInProgress,
 				);
 				appendAllChildren(instance, workInProgress, false, false);
@@ -117,8 +121,10 @@ function completeWork(current, workInProgress, renderExpirationTime) {
 						instance,
 						type,
 						newProps,
-						rootContainerInstance,
-						currentHostContext,
+						// rootContainerInstance,
+                        // currentHostContext,
+                        {},
+                        {},
 					)
 				) {
 					markUpdate(workInProgress);
@@ -128,7 +134,8 @@ function completeWork(current, workInProgress, renderExpirationTime) {
 				if (workInProgress.ref !== null) {
 					markRef(workInProgress);
 				}
-			}
+            }
+            break
 		}
 		case HostText: {
 			// 创建stateNode
@@ -147,7 +154,8 @@ function completeWork(current, workInProgress, renderExpirationTime) {
 			}
 			break;
 		}
-	}
+    }
+    return null;
 }
 
 export { completeWork };
