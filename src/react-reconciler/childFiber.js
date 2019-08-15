@@ -148,9 +148,10 @@ function ChildReconciler(shouldTrackSideEffects) {
 				if (previousNewFiber === null) {
 					resultingFirstChild = newFiber;
 				} else {
-					previousNewFibers.sibling = newFiber;
-				}
-			}
+					previousNewFiber.sibling = newFiber;
+                }
+                previousNewFiber = newFiber;
+            }
             return resultingFirstChild;
 		}
 	}

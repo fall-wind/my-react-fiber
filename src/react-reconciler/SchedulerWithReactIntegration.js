@@ -4,7 +4,8 @@ import {
 	UserBlockingPriority as Scheduler_UserBlockingPriority,
 	NormalPriority as Scheduler_NormalPriority,
 	IdlePriority as Scheduler_IdlePriority,
-	LowPriority as Scheduler_LowPriority,
+    LowPriority as Scheduler_LowPriority,
+    unstable_runWithPriority as Scheduler_runWithPriority,
 } from '../scheduler';
 
 export const ImmediatePriority = 99;

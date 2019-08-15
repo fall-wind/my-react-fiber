@@ -11,7 +11,7 @@ import {
 	FunctionComponent,
 } from '../shared/ReactWorkTags';
 import { createWorkInProgress } from './fiber';
-import { noTimeout } from './ReactDOMHostConfig';
+import { noTimeout, prepareForCommit } from './ReactDOMHostConfig';
 import { ContextOnlyDispatcher } from './fiberHooks';
 import { enableProfilerTimer } from '../shared/ReactFeatureFlags';
 import ReactSharedInternals from '../shared/ReactSharedInternals';
@@ -21,11 +21,25 @@ import {
 	Incomplete,
 	NoEffect,
 	PerformedWork,
+	Snapshot,
+	Ref,
+	ContentReset,
+	Placement,
+	Update,
+	Deletion,
+	PlacementAndUpdate,
+	Callback,
 } from '../shared/ReactSideEffectTags';
 import {
 	getCurrentPriorityLevel,
 	ImmediatePriority,
+	runWithPriority,
 } from './SchedulerWithReactIntegration';
+import {
+	commitBeforeMutationLifeCycles as commitBeforeMutationEffectOnFiber,
+	commitPlacement,
+	commitWork,
+} from './fiberCommitWork';
 
 const { ReactCurrentDispatcher, ReactCurrentOwner } = ReactSharedInternals;
 
@@ -44,6 +58,8 @@ let workInProgress = null;
 
 let currentEventTime = NoWork;
 let renderExpirationTime = NoWork;
+
+let nextEffect = null;
 
 const RootIncomplete = 0;
 const RootErrored = 1;
@@ -186,7 +202,7 @@ function markUpdateTimeFromFiberToRoot(fiber, expirationTime) {
 
 // 创建workInProgress 以及相关工作
 function prepareFreshStack(root, expirationTime) {
-	root.finishWork = null;
+	root.finishedWork = null;
 	root.finishedExpirationTime = null;
 
 	// const timeoutHandle = root.timeoutHandle
@@ -212,18 +228,177 @@ function startWorkOnPendingInteractions() {
 	const interactions = new Set();
 }
 
-function commitRootImpl(root, level) {
+// hooks 先关的 create
+function commitBeforeMutationEffects() {
+	while (nextEffect !== null) {
+		if ((nextEffect.effectTag & Snapshot) !== NoEffect) {
+			const current = nextEffect.alternate;
+			commitBeforeMutationEffectOnFiber(current, nextEffect);
+		}
+		nextEffect = nextEffect.nextEffect;
+	}
+}
+
+//
+function commitMutationEffects(renderPriorityLevel) {
+	while (nextEffect !== null) {
+		const effectTag = nextEffect.effectTag;
+
+		if (effectTag & ContentReset) {
+			// TODO
+		}
+
+		if (effectTag & Ref) {
+			// TODO
+		}
+
+		let primaryEffectTag = effectTag & (Placement | Update | Deletion);
+
+		switch (primaryEffectTag) {
+			case Placement: {
+				commitPlacement(nextEffect);
+				nextEffect.effectTag &= ~Placement;
+				// 处理完 清除
+				break;
+			}
+			case PlacementAndUpdate: {
+				commitPlacement(nextEffect);
+				nextEffect.effectTag &= ~Placement;
+
+				const current = nextEffect.alternate;
+
+				commitWork(current, nextEffect);
+				break;
+			}
+        }
+        nextEffect = nextEffect.nextEffect;
+	}
+}
+
+function commitLayoutEffects(root, committedExpirationTime) {
+	while (nextEffect !== null) {
+		const effectTag = nextEffect.effectTag;
+		if (effectTag & (Update | Callback)) {
+			// TODO
+		}
+
+		nextEffect = nextEffect.nextEffect;
+	}
+}
+
+function commitRootImpl(root, renderPriorityLevel) {
 	// flushPassiveEffects();
 
-	const finishWork = root.finishedWork;
+	const finishedWork = root.finishedWork;
 	const expirationTime = root.finishedExpirationTime;
 
-	if (finishWork === null) {
+	if (finishedWork === null) {
 		return null;
 	}
 
-	root.finishWork = null;
+	root.finishedWork = null;
 	root.finishedExpirationTime = NoWork;
+
+	root.callbackNode = null;
+	root.callbackExpirationTime = NoWork;
+
+	const updateExpirationTimeBeforeCommit = finishedWork.expirationTime;
+	const childExpirationTimeBeforeCommit = finishedWork.childExpirationTime;
+
+	// TODO time mean?
+	const firstPendingTimeBeforeCommit =
+		childExpirationTimeBeforeCommit > updateExpirationTimeBeforeCommit
+			? childExpirationTimeBeforeCommit
+			: updateExpirationTimeBeforeCommit;
+
+	root.firstPendingTime = firstPendingTimeBeforeCommit;
+
+	if (firstPendingTimeBeforeCommit < root.lastPendingTime) {
+		root.lastPendingTime = firstPendingTimeBeforeCommit;
+	}
+
+	if (root === workInProgressRoot) {
+		workInProgressRoot = null;
+		workInProgress = null;
+		renderExpirationTime = NoWork;
+	} else {
+		//
+	}
+
+	let firstEffect;
+
+	if (finishedWork.effectTag > PerformedWork) {
+		// 一个fiber的effect仅包含 他的children的 不包含他自身 如果root节点有一个effect 我们需要把它添加到effect list 的尾部
+		//
+		if (finishedWork.lastEffect !== null) {
+			finishedWork.lastEffect.nextEffect = finishedWork;
+			firstEffect = finishedWork.firstEffect;
+		} else {
+			firstEffect = finishedWork;
+		}
+	} else {
+		firstEffect = finishedWork.firstEffect;
+	}
+
+	if (firstEffect !== null) {
+		const prevExceutionContext = executionContext;
+		executionContext |= CommitContext;
+
+		let prevInteractions = null;
+
+		ReactCurrentOwner.current = null;
+
+		prepareForCommit(root.containerInfo);
+        nextEffect = firstEffect;
+        console.error('111111111111')
+		do {
+			try {
+				commitBeforeMutationEffects();
+			} catch (error) {
+				console.error('error msg:', error);
+				break;
+			}
+        } while (nextEffect !== null);
+        
+        console.error('222222222222')
+		// 重新设置标记位
+
+		nextEffect = firstEffect;
+
+		do {
+			try {
+				commitMutationEffects(renderPriorityLevel);
+			} catch (error) {
+				console.error('error msg', error);
+				break;
+			}
+		} while (nextEffect !== null);
+		// append
+        console.error('3333333333333333')
+		nextEffect = firstEffect;
+
+		do {
+			try {
+				commitLayoutEffects(root, expirationTime);
+			} catch (error) {
+				console.error('error msg', error);
+				break;
+			}
+		} while (nextEffect !== null);
+        console.error('444444444444444')
+		nextEffect = null;
+	}
+
+	while (nextEffect !== null) {
+		const nextNextEffect = nextEffect.nextEffect;
+		nextEffect.nextEffect = null;
+		nextEffect = nextNextEffect;
+	}
+
+	// dev tools
+	// onCommitRoot(finishedWork.stateNode, expirationTime)
+
+	return null;
 }
 
 function commitRoot(root) {
@@ -250,14 +425,19 @@ function completeUnitOfWork(unitOfWork) {
 
 		// 检测是否有未完成的工作
 		if ((workInProgress.effectTag & Incomplete) === NoEffect) {
-			let next;
-			if ((workInProgress.mode & ProfileMode) === NoMode) {
-				next = completeWork(
-					current,
-					workInProgress,
-					renderExpirationTime,
-				);
-			}
+            let next;
+            next = completeWork(
+                current,
+                workInProgress,
+                renderExpirationTime,
+            );
+			// if ((workInProgress.mode & ProfileMode) === NoMode) {
+			// 	next = completeWork(
+			// 		current,
+			// 		workInProgress,
+			// 		renderExpirationTime,
+			// 	);
+			// }
 
 			if (next !== null) {
 				return next;
@@ -297,7 +477,7 @@ function completeUnitOfWork(unitOfWork) {
 		const siblingFiber = workInProgress.sibling;
 
 		if (siblingFiber !== null) {
-            console.error(siblingFiber, 'siblingFiber...')
+			console.error(siblingFiber, 'siblingFiber...');
 			return siblingFiber;
 		}
 
@@ -307,7 +487,7 @@ function completeUnitOfWork(unitOfWork) {
 	// We've reached the root.
 	if (workInProgressRootExitStatus === RootIncomplete) {
 		workInProgressRootExitStatus = RootCompleted;
-    }
+	}
 	return null;
 }
 
@@ -387,16 +567,15 @@ function renderRoot(root, expirationTime, isSync) {
 
 		executionContext = prevExecutionContext;
 		ReactCurrentDispatcher.current = prevDispatcher;
-    }
+	}
 
-	root.finishWork = root.current.alternate;
+	root.finishedWork = root.current.alternate;
 
 	root.finishedExpirationTime = expirationTime;
 
-    workInProgressRoot = null;
-    console.error(root, 'root & finish work')
-    return
-    // TODO
+	workInProgressRoot = null;
+	console.error(root, 'root & finish work');
+	// TODO
 	switch (workInProgressRootExitStatus) {
 		case RootCompleted: {
 			return commitRoot.bind(null, root);

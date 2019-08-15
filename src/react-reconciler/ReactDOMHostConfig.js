@@ -1,9 +1,12 @@
 import {
 	createTextNode,
-    setInitialProperties,
-    createElement,
+	setInitialProperties,
+	createElement,
 } from '../react-dom/ReactDOMComponent';
-import { precacheFiberNode, updateFiberProps } from '../react-dom/ReactDOMComponentTree';
+import {
+	precacheFiberNode,
+	updateFiberProps,
+} from '../react-dom/ReactDOMComponentTree';
 
 export const noTimeout = -1;
 
@@ -76,4 +79,51 @@ export function finalizeInitialChildren(
 ) {
 	setInitialProperties(domElement, type, props, rootContainerInstance);
 	return shouldAutoFocusHostComponent(type, props);
+}
+
+export function prepareForCommit(containerInfo) {
+	// disbale
+}
+
+const COMMENT_NODE = 8;
+
+export function insertInContainerBefore(container, child, beforeChild) {
+	if (container.nodeType === COMMENT_NODE) {
+		container.parentNode.insertBefore(child, beforeChild);
+	} else {
+		container.insertBefore(child, beforeChild);
+	}
+}
+
+export function insertBefore(parentInstance, child, beforeChild) {
+	parentInstance.insertBefore(beforeChild, child);
+}
+
+export function appendChild(parentInstance, child) {
+	parentInstance.appendChild(child);
+}
+
+export function appendChildToContainer(container, child) {
+	let parentNode;
+	if (container.nodeType === COMMENT_NODE) {
+		parentNode = container.parentNode;
+		parentNode.insertBefore(child, container);
+	} else {
+		parentNode = container;
+		parentNode.appendChild(child);
+	}
+
+	// TODO
+	// const reactRootContainer = container._reactRootContainer;
+	// if (
+	// 	(reactRootContainer === null || reactRootContainer === undefined) &&
+	// 	parentNode.onclick === null
+	// ) {
+	// 	// TODO: This cast may not be sound for SVG, MathML or custom elements.
+	// 	trapClickOnNonInteractiveElement(((parentNode: any): HTMLElement));
+	// }
+}
+
+export function commitUpdate() {
+	// TODO
 }
