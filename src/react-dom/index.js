@@ -5,6 +5,7 @@ import {
 } from '../react-reconciler';
 import { unbatchedUpdates } from '../react-reconciler/ReactFiberWorkLoop'
 import { LegacyRoot } from '../shared/ReactRootTags';
+import './ReactDOMClientInjection';
 
 /**
  * 内部只有回调

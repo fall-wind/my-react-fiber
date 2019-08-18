@@ -1,6 +1,8 @@
 import React from './component'
 import { ReactDOM } from './component'
 
+import './babelTest'
+
 function Button(props) {
     const { label } = props
     return <button>{label}</button>

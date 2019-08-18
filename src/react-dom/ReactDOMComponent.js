@@ -1,5 +1,8 @@
 import isCustomComponent from '../shared/isCustomComponent';
 import { TEXT_NODE } from '../shared/HTMLNodeType';
+import {
+    
+} from '../events/EventPluginRegistry'
 
 const DANGEROUSLY_SET_INNER_HTML = 'dangerouslySetInnerHTML';
 const SUPPRESS_CONTENT_EDITABLE_WARNING = 'suppressContentEditableWarning';
