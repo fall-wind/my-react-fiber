@@ -4,6 +4,7 @@ import { createUpdate, enqueueUpdate } from './updateQueue';
 import { emptyContextObject } from './fiberContext'
 import { scheduleUpdateOnFiber as scheduleWork } from './ReactFiberWorkLoop'
 import { createFiberRoot } from './fiberRoot'
+import { HostComponent } from '../shared/ReactWorkTags';
 
 export function createContainer(containerInfo, tag) {
 	return createFiberRoot(containerInfo, tag);

@@ -31,14 +31,26 @@
     "@babel/preset-react": "^7.0.0",
     "babel-eslint": "^9.0.0",
     "babel-loader": "^8.0.6",
+    "babel-polyfill": "^6.26.0",
     "babel-upgrade": "^1.0.1",
+    "css-loader": "^3.2.0",
     "html-webpack-plugin": "^3.2.0",
+    "less": "^3.10.1",
+    "less-loader": "^5.0.0",
     "source-map-loader": "^0.2.4",
+    "style-loader": "^1.0.0",
     "webpack": "^4.31.0",
     "webpack-bundle-analyzer": "^3.3.2",
     "webpack-cli": "^3.3.2",
     "webpack-dev-server": "^3.3.1"
   },
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "babel-standalone": "^6.26.0",
+    "codemirror": "^5.48.2",
+    "react": "^16.9.0",
+    "react-codemirror2": "^6.0.0",
+    "react-dom": "^16.9.0"
+  }
 }

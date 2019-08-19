@@ -1,0 +1,58 @@
+html,
+body,
+#app {
+	height: 100%;
+	width: 100%;
+}
+* {
+	padding: 0;
+	margin: 0;
+}
+
+.work-loop-container {
+	height: 100%;
+	width: 100%;
+	display: flex;
+	flex-direction: row;
+	position: relative;
+	.editor-container {
+		flex: 1;
+		border-right: 1px solid #e9e9e9;
+		.editor-item,
+		.CodeMirror {
+			height: 100%;
+		}
+	}
+	.work-loop-show {
+		flex: 1;
+		overflow: auto;
+		.color-bar {
+			display: flex;
+			flex-direction: row;
+			height: 70;
+			margin-bottom: 20px;
+			.color-bar-item {
+				flex: 0 0 160px;
+				text-align: center;
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				.color-item {
+					height: 50px;
+					width: 50px;
+				}
+				.phase-en {
+					line-height: 20px;
+				}
+			}
+		}
+		#canvas {
+			border-right: 1px solid #e9e9e9;
+		}
+	}
+	.execution-btn {
+		position: absolute;
+		bottom: 20px;
+		left: calc(50% - 50px);
+	}
+}

@@ -40,6 +40,10 @@ import {
 	commitPlacement,
 	commitWork,
 } from './fiberCommitWork';
+import {
+	setCurrentContext as setCurrentFiberInRecordStatus,
+	getCurrentPerformPhase as getInjectionPerformPhase,
+} from '../react-dom/injection/index';
 
 const { ReactCurrentDispatcher, ReactCurrentOwner } = ReactSharedInternals;
 
@@ -270,8 +274,8 @@ function commitMutationEffects(renderPriorityLevel) {
 				commitWork(current, nextEffect);
 				break;
 			}
-        }
-        nextEffect = nextEffect.nextEffect;
+		}
+		nextEffect = nextEffect.nextEffect;
 	}
 }
 
@@ -349,8 +353,7 @@ function commitRootImpl(root, renderPriorityLevel) {
 		ReactCurrentOwner.current = null;
 
 		prepareForCommit(root.containerInfo);
-        nextEffect = firstEffect;
-        console.error('111111111111')
+		nextEffect = firstEffect;
 		do {
 			try {
 				commitBeforeMutationEffects();
@@ -358,9 +361,7 @@ function commitRootImpl(root, renderPriorityLevel) {
 				console.error('error msg:', error);
 				break;
 			}
-        } while (nextEffect !== null);
-        
-        console.error('222222222222')
+		} while (nextEffect !== null);
 		// 重新设置标记位
 
 		nextEffect = firstEffect;
@@ -374,7 +375,6 @@ function commitRootImpl(root, renderPriorityLevel) {
 			}
 		} while (nextEffect !== null);
 		// append
-        console.error('3333333333333333')
 		nextEffect = firstEffect;
 
 		do {
@@ -385,7 +385,6 @@ function commitRootImpl(root, renderPriorityLevel) {
 				break;
 			}
 		} while (nextEffect !== null);
-        console.error('444444444444444')
 		nextEffect = null;
 	}
 
@@ -425,12 +424,9 @@ function completeUnitOfWork(unitOfWork) {
 
 		// 检测是否有未完成的工作
 		if ((workInProgress.effectTag & Incomplete) === NoEffect) {
-            let next;
-            next = completeWork(
-                current,
-                workInProgress,
-                renderExpirationTime,
-            );
+			let next;
+			setCurrentFiberInRecordStatus(workInProgress, 'completeWork');
+			next = completeWork(current, workInProgress, renderExpirationTime);
 			// if ((workInProgress.mode & ProfileMode) === NoMode) {
 			// 	next = completeWork(
 			// 		current,
@@ -477,7 +473,6 @@ function completeUnitOfWork(unitOfWork) {
 		const siblingFiber = workInProgress.sibling;
 
 		if (siblingFiber !== null) {
-			console.error(siblingFiber, 'siblingFiber...');
 			return siblingFiber;
 		}
 
@@ -498,11 +493,15 @@ function performUnitOfWork(unitOfWork) {
 	//     // TODO
 	// } else {
 	//     next = beginWork(current, unitOfWork, renderExpirationTime)
-	// }
+    // }
+
+	setCurrentFiberInRecordStatus(unitOfWork, 'beginWork');
+
 	next = beginWork(current, unitOfWork, renderExpirationTime);
 	unitOfWork.memoizedProps = unitOfWork.pendingProps;
 
 	if (next === null) {
+		setCurrentFiberInRecordStatus(unitOfWork, 'completeUnitOfWork');
 		next = completeUnitOfWork(unitOfWork);
 	}
 
@@ -566,14 +565,18 @@ function renderRoot(root, expirationTime, isSync) {
 		} while (true);
 
 		executionContext = prevExecutionContext;
-		ReactCurrentDispatcher.current = prevDispatcher;
+        ReactCurrentDispatcher.current = prevDispatcher;
+        setCurrentFiberInRecordStatus(null, 'workLoopOver');
 	}
 
 	root.finishedWork = root.current.alternate;
 
 	root.finishedExpirationTime = expirationTime;
 
-	workInProgressRoot = null;
+    workInProgressRoot = null;
+	if (getInjectionPerformPhase() === 'workLoop') {
+		return;
+	}
 	console.error(root, 'root & finish work');
 	// TODO
 	switch (workInProgressRootExitStatus) {

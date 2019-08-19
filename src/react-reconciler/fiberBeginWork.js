@@ -72,8 +72,6 @@ function updateHostComponent(current, workInProgress, renderExpirationTime) {
 		nextChildren,
 		renderExpirationTime,
     );
-    
-    console.error(workInProgress.child, 'workInProgress.child', workInProgress)
 
     return workInProgress.child;
 }

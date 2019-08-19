@@ -6,6 +6,7 @@ import {
 import { unbatchedUpdates } from '../react-reconciler/ReactFiberWorkLoop'
 import { LegacyRoot } from '../shared/ReactRootTags';
 import './ReactDOMClientInjection';
+import CustomInjection from './injection/index'
 
 /**
  * 内部只有回调
@@ -128,6 +129,7 @@ function renderSubtreeIntoContainer(
 
 const ReactDOM = {
 	render(element, container, callback) {
+        console.error('ececl')
 		return renderSubtreeIntoContainer(
 			null,
 			element,
@@ -135,7 +137,8 @@ const ReactDOM = {
 			false,
 			callback,
 		);
-	},
+    },
+    CustomInjection,
 };
 
 export default ReactDOM;
