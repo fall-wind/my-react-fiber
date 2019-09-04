@@ -1,4 +1,9 @@
 import ReactSharedInternals from '../shared/ReactSharedInternals';
+import {
+	Update as UpdateEffect,
+    Passive as PassiveEffect,
+    NoEffect as NoHookEffect,
+} from '../shared/ReactSideEffectTags';
 import { NoWork } from './expirationTime';
 import {
 	requestCurrentTime,
@@ -6,6 +11,7 @@ import {
 	scheduleWork,
 } from './ReactFiberWorkLoop';
 import { markWorkInProgressReceivedUpdate } from './fiberBeginWork';
+import { UnmountPassive, MountPassive } from './ReactHookEffectTags';
 
 const { ReactCurrentDispatcher } = ReactSharedInternals;
 let didScheduleRenderPhaseUpdate = false;
@@ -262,8 +268,8 @@ function updateReducer(reducer, initialArg, init) {
 			}
 			pervUpdate = update;
 			update = update.next;
-        } while (update !== null && update !== first);
-        
+		} while (update !== null && update !== first);
+
 		if (!didSkip) {
 			newBaseUpdate = pervUpdate;
 			newBaseState = newState;
@@ -289,15 +295,100 @@ function updateState(initialState) {
 	return updateReducer(basicStateReducer, initialState);
 }
 
-const HooksDispatcherOnMount = {
-	readContext,
-	useState: mountState,
-};
+function createFunctionComponentUpdateQueue() {
+	return {
+		lastEffect: null,
+	};
+}
 
-const HooksDispatcherOnUpdate = {
-	readContext,
-	useState: updateState,
-};
+function pushEffect(tag, create, destroy, deps) {
+	const effect = {
+		tag,
+		create,
+		destroy,
+		deps,
+		next: null,
+	};
+
+	if (componentUpdateQueue === null) {
+		componentUpdateQueue = createFunctionComponentUpdateQueue();
+		componentUpdateQueue.lastEffect = effect.next = effect;
+	} else {
+		const lastEffect = componentUpdateQueue.lastEffect;
+		if (lastEffect === null) {
+			componentUpdateQueue.lastEffect = effect.next = effect;
+		} else {
+			// 插入effect
+			const firstEffect = lastEffect.next;
+			lastEffect.next = effect;
+			effect.next = firstEffect;
+			componentUpdateQueue.lastEffect = effect;
+		}
+	}
+	return effect;
+}
+
+function mountEffectImpl(fiberEffectTag, hookEffectTag, create, deps) {
+	const hook = mountWorkInProgressHook();
+	const nextDeps = deps === undefined ? null : deps;
+
+	sideEffectTag |= fiberEffectTag;
+	hook.memoizedState = pushEffect(hookEffectTag, create, undefined, nextDeps);
+}
+
+function mountEffect(create, deps) {
+	return mountEffectImpl(
+		UpdateEffect | PassiveEffect,
+		UnmountPassive | MountPassive,
+		create,
+		deps,
+	);
+}
+
+function areHookInputsEqual(nextDeps, prevDeps) {
+	if (prevDeps === null) {
+		return false;
+	}
+
+	for (let i = 0; i < prevDeps.length && i < nextDeps.length; i++) {
+		if (is(nextDeps[i], prevDeps[i])) {
+			continue;
+		}
+		return false;
+	}
+	return true;
+}
+
+function updateEffectImpl(fiberEffectTag, hookEffectTag, create, deps) {
+	const hook = updateWorkInProgressHook();
+	const nextDeps = deps === undefined ? null : deps;
+
+	let destroy = undefined;
+
+	if (currentHook !== null) {
+		const prevEffect = currentHook.memoizedState;
+		destroy = prevEffect.destroy;
+		if (nextDeps !== null) {
+			const prevDeps = prevEffect.deps;
+			if (areHookInputsEqual(nextDeps, prevDeps)) {
+				pushEffect(NoHookEffect, create, destroy, nextDeps);
+				return;
+			}
+		}
+	}
+
+	sideEffectTag |= fiberEffectTag;
+	hook.memoizedState = pushEffect(hookEffectTag, create, destroy, nextDeps);
+}
+
+function updateEffect(create, deps) {
+	return updateEffectImpl(
+		UpdateEffect | PassiveEffect,
+		UnmountPassive | MountPassive,
+		create,
+		deps,
+	);
+}
 
 export function renderWithHooks(
 	current,
@@ -359,4 +450,16 @@ export const ContextOnlyDispatcher = {
 	useState: throwInvalidHookError,
 	useDebugValue: throwInvalidHookError,
 	useResponder: throwInvalidHookError,
+};
+
+const HooksDispatcherOnMount = {
+	readContext,
+	useState: mountState,
+	useEffect: mountEffect,
+};
+
+const HooksDispatcherOnUpdate = {
+	readContext,
+	useState: updateState,
+	useEffect: updateEffect,
 };

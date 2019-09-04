@@ -214,7 +214,6 @@ function updateFunctionComponent(
 	nextProps,
 	renderExpirationTime,
 ) {
-	console.error(current, 'current udpateFunctionComponent');
 	if (!disableLegacyContext) {
 		// TODO
 	}

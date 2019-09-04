@@ -168,7 +168,6 @@ const SimpleEventPlugin = {
 			nativeEvent,
 			nativeEventTarget,
         );
-        console.error(event, 'event,,,')
 		accumulateTwoPhaseDispatches(event);
 		return event;
 	},

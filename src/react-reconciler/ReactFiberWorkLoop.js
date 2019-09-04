@@ -29,6 +29,7 @@ import {
 	Deletion,
 	PlacementAndUpdate,
 	Callback,
+	Passive,
 } from '../shared/ReactSideEffectTags';
 import {
 	getCurrentPriorityLevel,
@@ -36,11 +37,16 @@ import {
 	runWithPriority,
 	flushSyncCallbackQueue,
 	scheduleSyncCallback,
+	NormalPriority,
+	scheduleCallback,
+	NoPriority,
 } from './SchedulerWithReactIntegration';
 import {
 	commitBeforeMutationLifeCycles as commitBeforeMutationEffectOnFiber,
+	commitLifeCycles as commitLayoutEffectOnFiber,
 	commitPlacement,
 	commitWork,
+	commitPassiveHookEffects,
 } from './fiberCommitWork';
 import {
 	setCurrentContext as setCurrentFiberInRecordStatus,
@@ -59,12 +65,18 @@ const RenderContext = /*                */ 0b010000;
 const CommitContext = /*                */ 0b100000;
 
 let executionContext = NoContext;
+let rootWithPendingPassiveEffects = null;
+let rootDoesHavePassiveEffects = false;
+let pendingPassiveEffectsRenderPriority = NoPriority;
+let pendingPassiveEffectsExpirationTime = NoWork;
 
 let workInProgressRoot = null;
 let workInProgress = null;
 
 let currentEventTime = NoWork;
 let renderExpirationTime = NoWork;
+
+let nestedPassiveUpdateCount = 0;
 
 let nextEffect = null;
 
@@ -87,7 +99,7 @@ export function upbatchedUpdates(fn, a) {
 		if (executionContext === NoContext) {
 			// TODO
 			// 刷新
-			flushSyncCallbackQueue()
+			flushSyncCallbackQueue();
 		}
 	}
 }
@@ -260,12 +272,10 @@ function commitMutationEffects(renderPriorityLevel) {
 		}
 
 		let primaryEffectTag = effectTag & (Placement | Update | Deletion);
-
 		switch (primaryEffectTag) {
 			case Placement: {
 				commitPlacement(nextEffect);
 				nextEffect.effectTag &= ~Placement;
-				// 处理完 清除
 				break;
 			}
 			case PlacementAndUpdate: {
@@ -276,12 +286,12 @@ function commitMutationEffects(renderPriorityLevel) {
 
 				commitWork(current, nextEffect);
 				break;
-            }
-            case Update: {
-                const current = nextEffect.alternate;
-                commitWork(current, nextEffect);
-                break;
-            }
+			}
+			case Update: {
+				const current = nextEffect.alternate;
+				commitWork(current, nextEffect);
+				break;
+			}
 		}
 		nextEffect = nextEffect.nextEffect;
 	}
@@ -291,7 +301,21 @@ function commitLayoutEffects(root, committedExpirationTime) {
 	while (nextEffect !== null) {
 		const effectTag = nextEffect.effectTag;
 		if (effectTag & (Update | Callback)) {
+			const current = nextEffect.alternate;
+			commitLayoutEffectOnFiber(
+				root,
+				current,
+				nextEffect,
+				committedExpirationTime,
+			);
+		}
+
+		if (effectTag & Ref) {
 			// TODO
+		}
+
+		if (effectTag & Passive) {
+			rootDoesHavePassiveEffects = true;
 		}
 
 		nextEffect = nextEffect.nextEffect;
@@ -303,7 +327,6 @@ function commitRootImpl(root, renderPriorityLevel) {
 
 	const finishedWork = root.finishedWork;
 	const expirationTime = root.finishedExpirationTime;
-
 	if (finishedWork === null) {
 		return null;
 	}
@@ -373,7 +396,6 @@ function commitRootImpl(root, renderPriorityLevel) {
 		// 重新设置标记位
 
 		nextEffect = firstEffect;
-
 		do {
 			try {
 				commitMutationEffects(renderPriorityLevel);
@@ -383,9 +405,8 @@ function commitRootImpl(root, renderPriorityLevel) {
 			}
 		} while (nextEffect !== null);
 		// append
-        nextEffect = firstEffect;
-        
-        root.current = finishedWork;  // 将完成工作赋给current
+		nextEffect = firstEffect;
+		root.current = finishedWork; // 将完成工作赋给current
 
 		do {
 			try {
@@ -395,21 +416,82 @@ function commitRootImpl(root, renderPriorityLevel) {
 				break;
 			}
 		} while (nextEffect !== null);
-        nextEffect = null;
-        
-        executionContext = prevExecutionContext; // commit阶段完成
-	}
+		nextEffect = null;
 
-	while (nextEffect !== null) {
-		const nextNextEffect = nextEffect.nextEffect;
-		nextEffect.nextEffect = null;
-		nextEffect = nextNextEffect;
+		executionContext = prevExecutionContext; // commit阶段完成
 	}
 
 	// dev tools
 	// onCommitRoot(finishedWork.stateNode, expirationTime)
 
+	const rootDidHavePassiveEffects = rootDoesHavePassiveEffects;
+
+	if (rootDidHavePassiveEffects) {
+		rootDoesHavePassiveEffects = false;
+		rootWithPendingPassiveEffects = root;
+		pendingPassiveEffectsExpirationTime = expirationTime;
+		pendingPassiveEffectsRenderPriority = renderPriorityLevel;
+	} else {
+		while (nextEffect !== null) {
+			const nextNextEffect = nextEffect.nextEffect;
+			nextEffect.nextEffect = null;
+			nextEffect = nextNextEffect;
+		}
+	}
+
 	return null;
+}
+
+export function flushPassiveEffects() {
+	if (rootWithPendingPassiveEffects === null) {
+		return false;
+	}
+	const root = rootWithPendingPassiveEffects;
+	const expirationTime = pendingPassiveEffectsExpirationTime;
+	const renderPriorityLevel = pendingPassiveEffectsRenderPriority;
+	rootWithPendingPassiveEffects = null;
+	pendingPassiveEffectsExpirationTime = NoWork;
+	pendingPassiveEffectsRenderPriority = NoPriority;
+
+	const priorityLevel =
+		renderPriorityLevel > NormalPriority
+			? NormalPriority
+			: renderPriorityLevel;
+	return runWithPriority(
+		priorityLevel,
+		flushPassiveEffectsImpl.bind(null, root, expirationTime),
+	);
+}
+
+function flushPassiveEffectsImpl(root, expirationTime) {
+	let prevInteractions = null;
+
+	const prevExecutionContext = executionContext;
+	executionContext |= CommitContext;
+	// 处于commit 阶段
+	let effect = root.current.firstEffect;
+
+	while (effect !== null) {
+		try {
+			commitPassiveHookEffects(effect);
+		} catch (error) {
+			console.error(`commitPassiveHookEffects: ${error}`);
+		}
+		const nextNextEffect = effect.nextEffect;
+		// Remove nextEffect pointer to assist GC
+		effect.nextEffect = null;
+		effect = nextNextEffect;
+	}
+
+	executionContext = prevExecutionContext;
+	flushSyncCallbackQueue();
+
+	nestedPassiveUpdateCount =
+		rootWithPendingPassiveEffects === null
+			? 0
+			: nestedPassiveUpdateCount + 1;
+
+	return true;
 }
 
 function commitRoot(root) {
@@ -418,6 +500,13 @@ function commitRoot(root) {
 		ImmediatePriority,
 		commitRootImpl.bind(null, root, renderPriorityLevel),
 	);
+
+	if (rootWithPendingPassiveEffects !== null) {
+		scheduleCallback(NormalPriority, () => {
+			flushPassiveEffects();
+			return null;
+		});
+	}
 
 	return null;
 }
@@ -528,7 +617,6 @@ function workLoopSync() {
 }
 
 function renderRoot(root, expirationTime, isSync) {
-    console.error('renderRoot phase')
 	if (root.firstPendingTime < expirationTime) {
 		// 如果当前没有任务 则立即退出
 		// 这个发生于多个cbs作用与一个root 更早的回调 flush 后面的工作
@@ -561,8 +649,6 @@ function renderRoot(root, expirationTime, isSync) {
 			}
 		}
 
-		// workLoopSync()
-
 		do {
 			try {
 				if (isSync) {
@@ -590,7 +676,6 @@ function renderRoot(root, expirationTime, isSync) {
 	if (getInjectionPerformPhase() === 'workLoop') {
 		return;
 	}
-	// console.error(root, 'root & finish work');
 	// TODO
 	switch (workInProgressRootExitStatus) {
 		case RootCompleted: {
@@ -673,7 +758,6 @@ export function scheduleUpdateOnFiber(fiber, expirationTime) {
 	// recordScheduleUpdate()
 
 	// 同步代码
-	console.error('schedule work...');
 	if (expirationTime === Sync) {
 		if (
 			// 检测在 unbatchedUpdates

@@ -25,6 +25,11 @@ let syncQueue = null;
 
 const fakeCallbackNode = {};
 
+export function scheduleCallback(reactPriorityLevel, callback, options) {
+    const priorityLevel = reactPriorityToSchedulerPriority(reactPriorityLevel)
+    return Scheduler_runWithPriority(priorityLevel, callback, options)
+}
+
 export function getCurrentPriorityLevel() {
 	switch (Scheduler_getCurrentPriorityLevel()) {
 		case Scheduler_ImmediatePriority:
@@ -70,20 +75,19 @@ export function flushSyncCallbackQueueImpl() {
 		let i = 0;
 		try {
 			let isSync = true;
-            let queue = syncQueue;
+			let queue = syncQueue;
 			runWithPriority(ImmediatePriority, () => {
 				for (; i < queue.length; i++) {
-                    let callback = queue[i];
+					let callback = queue[i];
 					do {
-                        callback = callback(isSync);
-                        console.error(callback === null)
+						callback = callback(isSync);
 					} while (callback !== null);
 				}
 			});
 			syncQueue = null;
 		} catch (error) {
-            // error status
-            console.error(error, 'error...')
+			// error status
+			console.error(error, 'error...');
 		} finally {
 			isFlushingSyncQueue = false;
 		}

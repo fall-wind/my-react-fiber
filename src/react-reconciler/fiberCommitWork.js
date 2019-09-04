@@ -5,8 +5,8 @@ import {
 	HostRoot,
 	HostText,
 	IncompleteClassComponent,
-    MemoComponent,
-    SimpleMemoComponent,
+	MemoComponent,
+	SimpleMemoComponent,
 } from '../shared/ReactWorkTags';
 import {
 	NoEffect as NoHookEffect,
@@ -17,15 +17,20 @@ import {
 	MountLayout,
 	UnmountPassive,
 	MountPassive,
+    NoEffect,
 } from './ReactHookEffectTags';
-import { ContentReset, Placement } from '../shared/ReactSideEffectTags';
 import {
-    insertInContainerBefore,
-    insertBefore,
-    appendChildToContainer,
-    appendChild,
-    commitUpdate,
-} from './ReactDOMHostConfig'
+	ContentReset,
+	Placement,
+	Passive,
+} from '../shared/ReactSideEffectTags';
+import {
+	insertInContainerBefore,
+	insertBefore,
+	appendChildToContainer,
+	appendChild,
+	commitUpdate,
+} from './ReactDOMHostConfig';
 import { ForwardRef } from './workTags';
 
 function commitHookEffectList(unmountTag, mountTag, finishedWork) {
@@ -51,7 +56,8 @@ function commitHookEffectList(unmountTag, mountTag, finishedWork) {
 			}
 
 			effect = effect.next;
-		} while (effect !== null);
+		} while (effect !== firstEffect);
+		// 这是一个环结构。。。。
 	}
 }
 
@@ -242,6 +248,49 @@ export function commitWork(current, finishedWork) {
 				}
 				return;
 			}
+		}
+	}
+}
+
+//
+export function commitLifeCycles(
+	finishedRoot,
+	current,
+	finishedWork,
+	committedExpirationTime,
+) {
+	switch (finishedWork.tag) {
+		case FunctionComponent:
+		case SimpleMemoComponent: {
+			commitHookEffectList(UnmountLayout, MountLayout, finishedWork);
+			break;
+		}
+		case HostComponent:
+			{
+				// TODO
+				// const instance = finishedWork.stateNode
+				// if (current) {
+				// }
+			}
+			return;
+	}
+}
+
+export function commitPassiveHookEffects(finishedWork) {
+	if ((finishedWork.effectTag & Passive) !== NoEffect) {
+		switch (finishedWork.tag) {
+			case FunctionComponent:
+			case ForwardRef:
+			case SimpleMemoComponent: {
+				commitHookEffectList(
+					UnmountPassive,
+					NoHookEffect,
+					finishedWork,
+				);
+				commitHookEffectList(NoHookEffect, MountPassive, finishedWork);
+			}
+			default:
+				break;
 		}
 	}
 }

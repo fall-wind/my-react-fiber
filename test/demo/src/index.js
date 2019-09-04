@@ -2,10 +2,13 @@
 
 import React from './component';
 import { ReactDOM } from './component';
-const { useState } = React;
+const { useState, useEffect } = React;
 
 function Button(props) {
     const [count, changeState] = useState(1);
+    useEffect(() => {
+        console.error('大家好！！！')
+    }, [count])
 	return (
 		<button
 			onClick={e => {

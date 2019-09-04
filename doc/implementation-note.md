@@ -304,7 +304,19 @@ completeUnitOfWork button
 
 
 
+executionContext 表示当前处于的阶段
+
+- NoContext
+- BatchedContext
+- DiscreteEventContext
+- RenderContext
+- CommitContext
+
+
 新的调度 如何处理一个回调里的两次更新
 
+如何更新dom
 
-## 
+hooks组件的更新过程
+- useState
+- useEffect
