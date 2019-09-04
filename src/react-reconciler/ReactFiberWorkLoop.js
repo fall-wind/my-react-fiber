@@ -385,7 +385,7 @@ function commitRootImpl(root, renderPriorityLevel) {
 		// append
         nextEffect = firstEffect;
         
-        root.current = finishedWork; // 将完成工作赋给current
+        root.current = finishedWork;  // 将完成工作赋给current
 
 		do {
 			try {
