@@ -2,9 +2,13 @@ import {
 	REACT_FRAGMENT_TYPE,
 	REACT_ELEMENT_TYPE,
 } from '../shared/ReactSymbols';
-import { createFiberFromElement, createFiberFromText } from './fiber';
+import {
+	createFiberFromElement,
+	createFiberFromText,
+	createWorkInProgress,
+} from './fiber';
 import { Placement, Deletion } from '../shared/ReactSideEffectTags';
-import { HostText } from './workTags';
+import { HostText, Fragment } from './workTags';
 
 // ref 需符合格式
 function coerceRef(returnFiber, current, element) {
@@ -47,6 +51,15 @@ function ChildReconciler(shouldTrackSideEffects) {
 			childToDelete = childToDelete.sibling;
 		}
 		return null;
+	}
+
+	function useFiber(fiber, pendingProps, expirationTime) {
+		// We currently set sibling to null and index to 0 here because it is easy
+		// to forget to do before returning it. E.g. for the single child case.
+		const clone = createWorkInProgress(fiber, pendingProps, expirationTime);
+		clone.index = 0;
+		clone.sibling = null;
+		return clone;
 	}
 
 	function createChild(returnFiber, newChild, expirationTime) {
@@ -125,6 +138,8 @@ function ChildReconciler(shouldTrackSideEffects) {
 
 		for (; oldFiber !== null && newIdx < newChildren.length; newIdx++) {
 			// TODO 第一渲染 oldFiber为null
+			if (oldFiber) {
+			}
 		}
 		if (newIdx === newChildren.length) {
 			// 已经遍历完毕 都可以重用 标记需要删除的没人
@@ -149,10 +164,10 @@ function ChildReconciler(shouldTrackSideEffects) {
 					resultingFirstChild = newFiber;
 				} else {
 					previousNewFiber.sibling = newFiber;
-                }
-                previousNewFiber = newFiber;
-            }
-            return resultingFirstChild;
+				}
+				previousNewFiber = newFiber;
+			}
+			return resultingFirstChild;
 		}
 	}
 
@@ -196,6 +211,32 @@ function ChildReconciler(shouldTrackSideEffects) {
 		let child = currentFirstChild;
 		while (child !== null) {
 			// TODO
+			if (child.key === key) {
+				if (
+					child.tag === Fragment
+						? element.type === REACT_FRAGMENT_TYPE
+						: child.elementType === element.type
+				) {
+					deleteRemainingChildren(returnFiber, child.sibling);
+					const existing = useFiber(
+						child,
+						element.type === REACT_FRAGMENT_TYPE
+							? element.props.children
+							: element.props,
+						expirationTime,
+					);
+
+					existing.ref = coerceRef(returnFiber, child, element);
+					existing.return = returnFiber;
+					return existing;
+				} else {
+					deleteChild(returnFiber, child);
+					break;
+				}
+			} else {
+				deleteChild(returnFiber, child);
+			}
+			child = child.sibling;
 		}
 		if (element.type === REACT_FRAGMENT_TYPE) {
 			// TOOD
@@ -226,8 +267,8 @@ function ChildReconciler(shouldTrackSideEffects) {
 			newChild = newChild.props.children;
 		}
 
-        const isObject = typeof newChild === 'object' && newChild !== null;
-        
+		const isObject = typeof newChild === 'object' && newChild !== null;
+
 		if (isObject) {
 			switch (newChild.$$typeof) {
 				case REACT_ELEMENT_TYPE: {
@@ -261,13 +302,39 @@ function ChildReconciler(shouldTrackSideEffects) {
 				newChild,
 				expirationTime,
 			);
-        }
-        
-        // newChild === null 删除
-        return deleteRemainingChildren(returnFiber, currentFirstChild);
+		}
+
+		// newChild === null 删除
+		return deleteRemainingChildren(returnFiber, currentFirstChild);
 	}
 	return reconcileChildFibers;
 }
 
 export const reconcileChildFibers = ChildReconciler(true);
 export const mountChildFibers = ChildReconciler(false);
+
+export function cloneChildFibers(current, workInProgress) {
+	if (workInProgress.child === null) {
+		return;
+	}
+
+	let currentChild = workInProgress.child;
+	let newChild = createWorkInProgress(
+		currentChild,
+		currentChild.pendingProps,
+		currentChild.expirationTime,
+	);
+	workInProgress.child = newChild;
+
+	newChild.return = workInProgress;
+	while (currentChild.sibling !== null) {
+		currentChild = currentChild.sibling;
+		newChild = newChild.sibling = createWorkInProgress(
+			currentChild,
+			currentChild.pendingProps,
+			currentChild.expirationTime,
+		);
+		newChild.return = workInProgress;
+	}
+	newChild.sibling = null;
+}

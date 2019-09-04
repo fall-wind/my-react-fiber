@@ -68,7 +68,8 @@ function WorkLoopShow(props) {
 				})}
 			</div>
 			<canvas width="500" height="500" id="canvas" />
-			{fiberList.map(it => {
+			{/* {fiberList.map(it => { */}
+			{[].map(it => {
 				const { fiber, phase, zIndex } = it;
 				const showName = getNameFromFiber(fiber);
 				return (

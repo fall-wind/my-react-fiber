@@ -5,17 +5,23 @@ import {
 	HostRoot,
 	HostComponent,
 	HostText,
-    HostPortal,
+	HostPortal,
 } from '../shared/ReactWorkTags';
-import { Placement } from '../shared/ReactSideEffectTags'
+import { Placement, Update } from '../shared/ReactSideEffectTags';
 import {
 	supportsMutation,
 	createTextInstance,
 	createInstance,
 	appendInitialChild,
 	finalizeInitialChildren,
+    prepareUpdate,
 } from './ReactDOMHostConfig';
-import { getRootHostContainer, getHostContext } from './fiberHostContext';
+import {
+	getRootHostContainer,
+	getHostContext,
+	popHostContainer,
+	popHostContext,
+} from './fiberHostContext';
 
 let appendAllChildren;
 let updateHostContainer;
@@ -34,8 +40,38 @@ function markRef(workInProgress) {
 
 if (supportsMutation) {
 	updateHostContainer = function(parent, workInProgress) {
-        // TODO
-        // NOTHING
+		// TODO
+		// NOTHING
+	};
+
+	updateHostComponent = function(
+		current,
+		workInProgress,
+		type,
+		newProps,
+		rootContainerInstance,
+	) {
+		const oldProps = current.memoizedProps;
+		if (oldProps === newProps) {
+			return;
+		}
+
+		const instance = workInProgress.stateNode;
+		const currentHostContext = getHostContext();
+
+		const updatePayload = prepareUpdate(
+			instance,
+			type,
+			oldProps,
+			newProps,
+			rootContainerInstance,
+			currentHostContext,
+		);
+
+		workInProgress.updateQueue = updatePayload;
+		if (updatePayload) {
+			markUpdate(workInProgress);
+		}
 	};
 
 	appendAllChildren = function(
@@ -53,7 +89,7 @@ if (supportsMutation) {
 			} else if (node.tag === HostPortal) {
 				// TODO
 			} else if (node.child !== null) {
-                // Q 重新设置 return 是为什么 在 createFiber不是已经做了吗
+				// Q 重新设置 return 是为什么 在 createFiber不是已经做了吗
 				node.child.return = node;
 				node = node.child;
 				continue;
@@ -68,8 +104,8 @@ if (supportsMutation) {
 					return;
 				}
 				node = node.return;
-            }
-            // Q 重新设置 return 是为什么 在 createFiber不是已经做了吗
+			}
+			// Q 重新设置 return 是为什么 在 createFiber不是已经做了吗
 			node.sibling.return = node.return;
 			node = node.sibling;
 		}
@@ -86,7 +122,7 @@ function completeWork(current, workInProgress, renderExpirationTime) {
 		case FunctionComponent:
 			break;
 		case HostRoot: {
-			// popHostContainer(workInProgress);
+			popHostContainer(workInProgress);
 			// Context
 			const fiberRoot = workInProgress.stateNode;
 			if (fiberRoot.pendingContext) {
@@ -96,23 +132,31 @@ function completeWork(current, workInProgress, renderExpirationTime) {
 			if (current === null || current.child === null) {
 				workInProgress.effectTag &= ~Placement;
 			}
-            updateHostContainer(workInProgress);
-            break;
+			updateHostContainer(workInProgress);
+			break;
 		}
 		case HostComponent: {
 			// 省略context 服务端渲染代码
+			popHostContext(workInProgress);
+			// const rootContainerInstance = getRootHostContainer();
+			const rootContainerInstance = document.getElementById('app'); // TODO
 			const type = workInProgress.type;
 			// 已生成
 			if (current !== null && workInProgress.stateNode !== null) {
-				updateHostComponent;
+				updateHostComponent(
+					current,
+					workInProgress,
+					type,
+					newProps,
+					rootContainerInstance,
+				);
 			} else {
+				const currentHostContext = getHostContext();
 				let instance = createInstance(
 					type,
 					newProps,
-                    // rootContainerInstance,
-                    {},
-                    // currentHostContext,
-                    {},
+					rootContainerInstance,
+					currentHostContext,
 					workInProgress,
 				);
 				appendAllChildren(instance, workInProgress, false, false);
@@ -121,10 +165,8 @@ function completeWork(current, workInProgress, renderExpirationTime) {
 						instance,
 						type,
 						newProps,
-						// rootContainerInstance,
-                        // currentHostContext,
-                        {},
-                        {},
+						rootContainerInstance,
+						currentHostContext,
 					)
 				) {
 					markUpdate(workInProgress);
@@ -134,8 +176,8 @@ function completeWork(current, workInProgress, renderExpirationTime) {
 				if (workInProgress.ref !== null) {
 					markRef(workInProgress);
 				}
-            }
-            break
+			}
+			break;
 		}
 		case HostText: {
 			// 创建stateNode
@@ -154,8 +196,8 @@ function completeWork(current, workInProgress, renderExpirationTime) {
 			}
 			break;
 		}
-    }
-    return null;
+	}
+	return null;
 }
 
 export { completeWork };

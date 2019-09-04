@@ -1,5 +1,11 @@
 import { injection as EventPluginHubInjection } from '../events/EventPluginHub';
 import SimpleEventPlugin from './events/SimpleEventPlugin';
+import { setComponentTree } from '../events/EventPluginUtils'
+import {
+    getFiberCurrentPropsFromNode,
+	getInstanceFromNode,
+	getNodeFromInstance,    
+} from './ReactDOMComponentTree'
 
 const DOMEventPluginOrder = [
 	'ResponderEventPlugin',
@@ -11,6 +17,12 @@ const DOMEventPluginOrder = [
 ];
 
 EventPluginHubInjection.injectEventPluginOrder(DOMEventPluginOrder);
+
+setComponentTree(
+	getFiberCurrentPropsFromNode,
+	getInstanceFromNode,
+	getNodeFromInstance,
+);
 
 EventPluginHubInjection.injectEventPluginsByName({
 	SimpleEventPlugin: SimpleEventPlugin,

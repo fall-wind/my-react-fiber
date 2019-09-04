@@ -4,6 +4,8 @@ import {
 	DiscreteEvent,
 	UserBlockingEvent,
 } from '../../shared/ReactTypes';
+import { accumulateTwoPhaseDispatches } from '../../events/EventPropagators'
+import SyntheticEvent from '../../events/SyntheticEvent'
 
 const eventTuples = [
 	[DOMTopLevelEventTypes.TOP_BLUR, 'blur', DiscreteEvent],
@@ -122,8 +124,8 @@ const eventTypes = {};
 
 const topLevelEventsToDispatchConfig = {};
 
-for (let i = 0; i < eventTypes.length; i++) {
-	const eventTuple = eventTypes[i];
+for (let i = 0; i < eventTuples.length; i++) {
+	const eventTuple = eventTuples[i];
 	const [topEvent, event, eventPriority] = eventTuple;
 	const capitalizedEvent = event[0].toUpperCase() + event.slice(1);
 	const onEvent = 'on' + capitalizedEvent;
@@ -165,8 +167,9 @@ const SimpleEventPlugin = {
 			targetInst,
 			nativeEvent,
 			nativeEventTarget,
-		);
-		// accumulateTwoPhaseDispatches(event);
+        );
+        console.error(event, 'event,,,')
+		accumulateTwoPhaseDispatches(event);
 		return event;
 	},
 };

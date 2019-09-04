@@ -4,8 +4,10 @@ import {
 	UserBlockingPriority as Scheduler_UserBlockingPriority,
 	NormalPriority as Scheduler_NormalPriority,
 	IdlePriority as Scheduler_IdlePriority,
-    LowPriority as Scheduler_LowPriority,
-    unstable_runWithPriority as Scheduler_runWithPriority,
+	LowPriority as Scheduler_LowPriority,
+	unstable_runWithPriority as Scheduler_runWithPriority,
+	unstable_scheduleCallback as Scheduler_scheduleCallback,
+	unstable_cancelCallback as Scheduler_cancelCallback,
 } from '../scheduler';
 
 export const ImmediatePriority = 99;
@@ -15,6 +17,13 @@ export const LowPriority = 96;
 export const IdlePriority = 95;
 // NoPriority is the absence of priority. Also React-only.
 export const NoPriority = 90;
+
+let immediateQueueCallbackNode = null;
+let isFlushingSyncQueue = false;
+
+let syncQueue = null;
+
+const fakeCallbackNode = {};
 
 export function getCurrentPriorityLevel() {
 	switch (Scheduler_getCurrentPriorityLevel()) {
@@ -51,6 +60,53 @@ function reactPriorityToSchedulerPriority(reactPriorityLevel) {
 }
 
 export function runWithPriority(reactPriorityLevel, fn) {
-    const priorityLevel = reactPriorityToSchedulerPriority(reactPriorityLevel);
-    return Scheduler_runWithPriority(priorityLevel, fn);
+	const priorityLevel = reactPriorityToSchedulerPriority(reactPriorityLevel);
+	return Scheduler_runWithPriority(priorityLevel, fn);
+}
+
+export function flushSyncCallbackQueueImpl() {
+	if (!isFlushingSyncQueue && syncQueue !== null) {
+		isFlushingSyncQueue = true;
+		let i = 0;
+		try {
+			let isSync = true;
+            let queue = syncQueue;
+			runWithPriority(ImmediatePriority, () => {
+				for (; i < queue.length; i++) {
+                    let callback = queue[i];
+					do {
+                        callback = callback(isSync);
+                        console.error(callback === null)
+					} while (callback !== null);
+				}
+			});
+			syncQueue = null;
+		} catch (error) {
+            // error status
+            console.error(error, 'error...')
+		} finally {
+			isFlushingSyncQueue = false;
+		}
+	}
+}
+
+export function flushSyncCallbackQueue() {
+	if (immediateQueueCallbackNode !== null) {
+		Scheduler_cancelCallback(immediateQueueCallbackNode);
+	}
+	flushSyncCallbackQueueImpl();
+}
+
+export function scheduleSyncCallback(callback) {
+	if (syncQueue === null) {
+		syncQueue = [callback];
+		immediateQueueCallbackNode = Scheduler_scheduleCallback(
+			Scheduler_ImmediatePriority,
+			flushSyncCallbackQueueImpl,
+		);
+	} else {
+		syncQueue.push(callback);
+	}
+
+	return fakeCallbackNode;
 }

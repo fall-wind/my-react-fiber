@@ -138,6 +138,8 @@ SyntheticEvent.extend = function(Interface) {
 	return Class;
 };
 
+addEventPoolingTo(SyntheticEvent);
+
 function addEventPoolingTo(EventConstructor) {
 	EventConstructor.eventPool = [];
 	EventConstructor.getPooled = getPooledEvent;

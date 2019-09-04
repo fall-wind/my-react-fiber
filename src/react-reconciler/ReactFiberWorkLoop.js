@@ -34,6 +34,8 @@ import {
 	getCurrentPriorityLevel,
 	ImmediatePriority,
 	runWithPriority,
+	flushSyncCallbackQueue,
+	scheduleSyncCallback,
 } from './SchedulerWithReactIntegration';
 import {
 	commitBeforeMutationLifeCycles as commitBeforeMutationEffectOnFiber,
@@ -44,6 +46,7 @@ import {
 	setCurrentContext as setCurrentFiberInRecordStatus,
 	getCurrentPerformPhase as getInjectionPerformPhase,
 } from '../react-dom/injection/index';
+import { UserBlockingPriority } from '../scheduler';
 
 const { ReactCurrentDispatcher, ReactCurrentOwner } = ReactSharedInternals;
 
@@ -84,7 +87,7 @@ export function upbatchedUpdates(fn, a) {
 		if (executionContext === NoContext) {
 			// TODO
 			// 刷新
-			// flushSyncCallbackQueue()
+			flushSyncCallbackQueue()
 		}
 	}
 }
@@ -139,7 +142,7 @@ export function unbatchedUpdates(fn, a) {
 		if (executionContext === NoContext) {
 			// Flush the immediate callbacks that were scheduled during this batch
 			// TODO
-			// flushSyncCallbackQueue();
+			flushSyncCallbackQueue();
 		}
 	}
 }
@@ -175,18 +178,18 @@ function markUpdateTimeFromFiberToRoot(fiber, expirationTime) {
 					alternate.childExpirationTime < expirationTime
 				) {
 					alternate.childExpirationTime = expirationTime;
-				} else if (
-					alternate !== null &&
-					alternate.childExpirationTime < expirationTime
-				) {
-					alternate.childExpirationTime = expirationTime;
 				}
-				if (node.return === null && node.tag === HostRoot) {
-					root = node.stateNode;
-					break;
-				}
-				node = node.return;
+			} else if (
+				alternate !== null &&
+				alternate.childExpirationTime < expirationTime
+			) {
+				alternate.childExpirationTime = expirationTime;
 			}
+			if (node.return === null && node.tag === HostRoot) {
+				root = node.stateNode;
+				break;
+			}
+			node = node.return;
 		}
 	}
 
@@ -273,7 +276,12 @@ function commitMutationEffects(renderPriorityLevel) {
 
 				commitWork(current, nextEffect);
 				break;
-			}
+            }
+            case Update: {
+                const current = nextEffect.alternate;
+                commitWork(current, nextEffect);
+                break;
+            }
 		}
 		nextEffect = nextEffect.nextEffect;
 	}
@@ -345,7 +353,7 @@ function commitRootImpl(root, renderPriorityLevel) {
 	}
 
 	if (firstEffect !== null) {
-		const prevExceutionContext = executionContext;
+		const prevExecutionContext = executionContext;
 		executionContext |= CommitContext;
 
 		let prevInteractions = null;
@@ -375,7 +383,9 @@ function commitRootImpl(root, renderPriorityLevel) {
 			}
 		} while (nextEffect !== null);
 		// append
-		nextEffect = firstEffect;
+        nextEffect = firstEffect;
+        
+        root.current = finishedWork; // 将完成工作赋给current
 
 		do {
 			try {
@@ -385,7 +395,9 @@ function commitRootImpl(root, renderPriorityLevel) {
 				break;
 			}
 		} while (nextEffect !== null);
-		nextEffect = null;
+        nextEffect = null;
+        
+        executionContext = prevExecutionContext; // commit阶段完成
 	}
 
 	while (nextEffect !== null) {
@@ -493,7 +505,7 @@ function performUnitOfWork(unitOfWork) {
 	//     // TODO
 	// } else {
 	//     next = beginWork(current, unitOfWork, renderExpirationTime)
-    // }
+	// }
 
 	setCurrentFiberInRecordStatus(unitOfWork, 'beginWork');
 
@@ -516,6 +528,7 @@ function workLoopSync() {
 }
 
 function renderRoot(root, expirationTime, isSync) {
+    console.error('renderRoot phase')
 	if (root.firstPendingTime < expirationTime) {
 		// 如果当前没有任务 则立即退出
 		// 这个发生于多个cbs作用与一个root 更早的回调 flush 后面的工作
@@ -565,25 +578,86 @@ function renderRoot(root, expirationTime, isSync) {
 		} while (true);
 
 		executionContext = prevExecutionContext;
-        ReactCurrentDispatcher.current = prevDispatcher;
-        setCurrentFiberInRecordStatus(null, 'workLoopOver');
+		ReactCurrentDispatcher.current = prevDispatcher;
+		setCurrentFiberInRecordStatus(null, 'workLoopOver');
 	}
 
 	root.finishedWork = root.current.alternate;
 
 	root.finishedExpirationTime = expirationTime;
 
-    workInProgressRoot = null;
+	workInProgressRoot = null;
 	if (getInjectionPerformPhase() === 'workLoop') {
 		return;
 	}
-	console.error(root, 'root & finish work');
+	// console.error(root, 'root & finish work');
 	// TODO
 	switch (workInProgressRootExitStatus) {
 		case RootCompleted: {
 			return commitRoot.bind(null, root);
 		}
 	}
+}
+
+function cancelCallback() {}
+
+function schedulePendingInteractions(root, expirationTime) {
+	// This is called when work is scheduled on a root.
+	// It associates the current interactions with the newly-scheduled expiration.
+	// They will be restored when that expiration is later committed.
+	if (!enableSchedulerTracing) {
+		return;
+	}
+
+	// scheduleInteractions(root, expirationTime, __interactionsRef.current);
+}
+
+function runRootCallback(root, callback, isSync) {
+	const prevCallbackNode = root.callbackNode;
+
+	let continuation = null;
+
+	try {
+		continuation = callback(isSync);
+		if (continuation !== null) {
+			return runRootCallback.bind(null, root, continuation);
+		} else {
+			return null;
+		}
+	} finally {
+		if (continuation === null && prevCallbackNode === root.callbackNode) {
+			root.callbackNode = null;
+			root.callbackExpirationTime = NoWork;
+		}
+	}
+}
+
+function scheduleCallbackForRoot(root, priorityLevel, expirationTime) {
+	const existingCallbackExpirationTime = root.callbackExpirationTime;
+
+	if (existingCallbackExpirationTime < expirationTime) {
+		// TODO
+		const existingCallbackNode = root.callbackNode;
+
+		if (existingCallbackNode !== null) {
+			cancelCallback(existingCallbackNode);
+		}
+		root.callbackExpirationTime = expirationTime;
+
+		if (expirationTime === Sync) {
+			root.callbackNode = scheduleSyncCallback(
+				runRootCallback.bind(
+					null,
+					root,
+					renderRoot.bind(null, root, expirationTime),
+				),
+			);
+		} else {
+			// TODO
+		}
+	}
+
+	// schedulePendingInteractions(root, expirationTime);
 }
 
 // function schedulePendingInteractions(root, expirationTime)
@@ -599,6 +673,7 @@ export function scheduleUpdateOnFiber(fiber, expirationTime) {
 	// recordScheduleUpdate()
 
 	// 同步代码
+	console.error('schedule work...');
 	if (expirationTime === Sync) {
 		if (
 			// 检测在 unbatchedUpdates
@@ -618,6 +693,62 @@ export function scheduleUpdateOnFiber(fiber, expirationTime) {
 			while (callback != null) {
 				callback = callback(true);
 			}
+		} else {
+			scheduleCallbackForRoot(root, ImmediatePriority, Sync);
+			if (executionContext === NoContext) {
+				flushSyncCallbackQueue();
+			}
 		}
 	}
+}
+
+export function batchedUpdates(fn, a) {
+	const preExecutionContext = executionContext;
+	executionContext |= BatchedContext;
+	try {
+		return fn(a);
+	} finally {
+		executionContext = prevExecutionContext;
+		if (executionContext === NoContext) {
+			// TODO
+			flushSyncCallbackQueue();
+		}
+	}
+}
+
+export function batchedEventUpdates(fn, a) {
+	const prevExecutionContext = executionContext;
+	executionContext |= EventContext;
+	try {
+		return fn(a);
+	} finally {
+		executionContext = prevExecutionContext;
+		if (executionContext === NoContext) {
+			// Flush the immediate callbacks that were scheduled during this batch
+			flushSyncCallbackQueue();
+		}
+	}
+}
+
+export const scheduleWork = scheduleUpdateOnFiber;
+
+export function discreteUpdates(fn, a, b, c) {
+	const prevExecutionContext = executionContext;
+	executionContext |= DiscreteEventContext;
+	try {
+		// Should this
+		// TODO
+		// return runWithPriority(UserBlockingPriority, fn.bind(null, a, b, c));
+		return fn.call(null, a, b, c);
+	} finally {
+		executionContext = prevExecutionContext;
+		if (executionContext === NoContext) {
+			// Flush the immediate callbacks that were scheduled during this batch
+			flushSyncCallbackQueue();
+		}
+	}
+}
+
+export function flushDiscreteUpdates() {
+	// TODO
 }

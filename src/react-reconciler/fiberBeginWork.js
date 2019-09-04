@@ -13,9 +13,10 @@ import { resolveDefaultProps } from './fiberLazyComponent';
 import { PerformedWork, ContentReset } from '../shared/ReactSideEffectTags';
 import { renderWithHooks } from './fiberHooks';
 import { processUpdateQueue } from './updateQueue';
-import { reconcileChildFibers, mountChildFibers } from './childFiber';
+import { reconcileChildFibers, mountChildFibers, cloneChildFibers } from './childFiber';
 import { ConcurrentMode } from '../shared/ReactTypeOfMode';
-import { shouldSetTextContent } from './ReactDOMHostConfig'
+import { shouldSetTextContent } from './ReactDOMHostConfig';
+import { pushHostContainer } from './fiberHostContext';
 
 let didReceiveUpdate = false;
 
@@ -45,7 +46,7 @@ function markRef(current, workInProgress) {
 }
 
 function updateHostComponent(current, workInProgress, renderExpirationTime) {
-    // context
+	// context
 	const type = workInProgress.type;
 	const nextProps = workInProgress.pendingProps;
 	const prevProps = current !== null ? current.memoizedProps : null;
@@ -64,16 +65,16 @@ function updateHostComponent(current, workInProgress, renderExpirationTime) {
 		renderExpirationTime !== Never
 	) {
 		// TODO
-    }
-    markRef(current, workInProgress)
+	}
+	markRef(current, workInProgress);
 	reconcileChildren(
 		current,
 		workInProgress,
 		nextChildren,
 		renderExpirationTime,
-    );
+	);
 
-    return workInProgress.child;
+	return workInProgress.child;
 }
 
 export function mountIndeterminateComponent(
@@ -144,9 +145,19 @@ export function reconcileChildren(
 	}
 }
 
+function pushHostRootContext(workInProgress) {
+	const root = workInProgress.stateNode;
+	if (root.pendingContext) {
+		// TODO
+	} else if (root.context) {
+		// TODO
+	}
+	pushHostContainer(workInProgress, root.containerInfo);
+}
+
 function updateHostRoot(current, workInProgress, renderExpirationTime) {
 	// TODO 将root的上下文推入
-	// pushHostRootContext(workInProgress)
+	pushHostRootContext(workInProgress);
 	const updateQueue = workInProgress.updateQueue;
 	const nextProps = workInProgress.pendingProps;
 	const prevState = workInProgress.memoizedState;
@@ -178,6 +189,24 @@ function updateHostRoot(current, workInProgress, renderExpirationTime) {
 	return workInProgress.child;
 }
 
+function bailoutOnAlreadyFinishedWork(
+	current,
+	workInProgress,
+	renderExpirationTime,
+) {
+    if (current !== null) {
+        workInProgress.dependencies = current.dependencies
+    }
+
+    const childExpirationTime = workInProgress.childExpirationTime
+    if (childExpirationTime < renderExpirationTime) {
+        return null
+    } else {
+        cloneChildFibers(current, workInProgress);
+        return workInProgress.child
+    }
+}
+
 function updateFunctionComponent(
 	current,
 	workInProgress,
@@ -185,6 +214,7 @@ function updateFunctionComponent(
 	nextProps,
 	renderExpirationTime,
 ) {
+	console.error(current, 'current udpateFunctionComponent');
 	if (!disableLegacyContext) {
 		// TODO
 	}
@@ -193,7 +223,8 @@ function updateFunctionComponent(
 		current,
 		workInProgress,
 		Component,
-		context,
+        // context,
+        {},
 		renderExpirationTime,
 	);
 	if (current !== null && !didReceiveUpdate) {
@@ -210,6 +241,10 @@ function updateFunctionComponent(
 	return workInProgress.child;
 }
 
+export function markWorkInProgressReceivedUpdate() {
+	didReceiveUpdate = true;
+}
+
 export function beginWork(current, workInProgress, renderExpirationTime) {
 	const updateExpirationTime = workInProgress.expirationTime;
 
@@ -220,6 +255,21 @@ export function beginWork(current, workInProgress, renderExpirationTime) {
 			didReceiveUpdate = true;
 		} else if (updateExpirationTime < renderExpirationTime) {
 			didReceiveUpdate = false;
+
+			// 这个fiber 没有正在进行的工作 释放不需要进入开始阶段。在这个优化的分支 仍然有一些统计工作;把xx推入堆栈中
+			switch (workInProgress.tag) {
+				case HostRoot: {
+					// TOOD
+                }
+                case HostComponent: {
+                    // TODO
+                }
+			}
+			return bailoutOnAlreadyFinishedWork(
+				current,
+				workInProgress,
+				renderExpirationTime,
+			);
 		}
 	} else {
 		didReceiveUpdate = false;

@@ -301,3 +301,7 @@ completeUnitOfWork button
 最后在 `completeUnitOfWork` 会将 `workInProgressRootExitStatus` 置为 RootComplete为`commitRoot`阶段的提交做准备
 
 整个workLoopSync工作大致就是如上 不过很多细节都没涉及到 大家可以补充 或者提出问题 如果我有能力可以帮忙解答
+
+
+
+新的调度 如何处理一个回调里的两次更新

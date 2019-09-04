@@ -1,7 +1,7 @@
+import ReactCurrentDispatcher from '../react/ReactCurrentDispatcher'
+
 const ReactSharedInternals = {
-    ReactCurrentDispatcher: {
-        current: null
-    },
+    ReactCurrentDispatcher,
     ReactCurrentBatchConfig: {
         suspense: null,
     },

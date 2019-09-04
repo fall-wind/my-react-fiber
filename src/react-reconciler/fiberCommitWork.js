@@ -5,6 +5,8 @@ import {
 	HostRoot,
 	HostText,
 	IncompleteClassComponent,
+    MemoComponent,
+    SimpleMemoComponent,
 } from '../shared/ReactWorkTags';
 import {
 	NoEffect as NoHookEffect,
@@ -22,7 +24,9 @@ import {
     insertBefore,
     appendChildToContainer,
     appendChild,
+    commitUpdate,
 } from './ReactDOMHostConfig'
+import { ForwardRef } from './workTags';
 
 function commitHookEffectList(unmountTag, mountTag, finishedWork) {
 	const updateQueue = finishedWork.updateQueue;

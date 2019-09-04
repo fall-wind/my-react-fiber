@@ -3,10 +3,24 @@ import {
 	updateContainer,
 	getPublicRootInstance,
 } from '../react-reconciler';
-import { unbatchedUpdates } from '../react-reconciler/ReactFiberWorkLoop'
+import {
+	unbatchedUpdates,
+	batchedUpdates,
+	discreteUpdates,
+	flushDiscreteUpdates,
+	batchedEventUpdates,
+} from '../react-reconciler/ReactFiberWorkLoop';
 import { LegacyRoot } from '../shared/ReactRootTags';
 import './ReactDOMClientInjection';
-import CustomInjection from './injection/index'
+import CustomInjection from './injection/index';
+import { setBatchingImplementation } from './events/ReactGenericBatching';
+
+setBatchingImplementation(
+	batchedUpdates,
+	discreteUpdates,
+	flushDiscreteUpdates,
+	batchedEventUpdates,
+);
 
 /**
  * 内部只有回调
@@ -57,14 +71,14 @@ function commonRootRender(children, callback) {
 }
 
 function commonUnmount(callback) {
-    const root = this._internalRoot
-    const work = new ReactWork()
-    callback = callback === undefined ? null : callback
-    if (callback !== null) {
-        work.then(callback)
-    }
-    updateContainer(null, root, null, work._onCommit)
-    return work
+	const root = this._internalRoot;
+	const work = new ReactWork();
+	callback = callback === undefined ? null : callback;
+	if (callback !== null) {
+		work.then(callback);
+	}
+	updateContainer(null, root, null, work._onCommit);
+	return work;
 }
 
 class ReactRoot {
@@ -103,8 +117,8 @@ function renderSubtreeIntoContainer(
 	callback,
 ) {
 	let root = container._reactRootContainer;
-    // 获取到container上的 root container 如果不存在 则说明是第一渲染 则创建哟个fiber root 对象
-    let fiberRoot;
+	// 获取到container上的 root container 如果不存在 则说明是第一渲染 则创建哟个fiber root 对象
+	let fiberRoot;
 	if (!root) {
 		root = container._reactRootContainer = createRootFromDOMContainer(
 			container,
@@ -119,17 +133,17 @@ function renderSubtreeIntoContainer(
 			};
 		}
 		unbatchedUpdates(() => {
-            updateContainer(children, fiberRoot, parentComponent, callback)
+			updateContainer(children, fiberRoot, parentComponent, callback);
 		});
 	} else {
-        // TODO
-    }
+		// TODO
+	}
 	return getPublicRootInstance(root._internalRoot);
 }
 
 const ReactDOM = {
 	render(element, container, callback) {
-        console.error('ececl')
+		console.error('ececl');
 		return renderSubtreeIntoContainer(
 			null,
 			element,
@@ -137,8 +151,8 @@ const ReactDOM = {
 			false,
 			callback,
 		);
-    },
-    CustomInjection,
+	},
+	CustomInjection,
 };
 
 export default ReactDOM;
