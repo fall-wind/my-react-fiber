@@ -2,17 +2,25 @@
 
 import React from './component';
 import { ReactDOM } from './component';
-const { useState, useEffect } = React;
+const { useState, useEffect, useMemo } = React;
 
 function Button(props) {
-    const [count, changeState] = useState(1);
-    useEffect(() => {
-        console.error('大家好！！！')
-    }, [count])
+	const [count, changeState] = useState(1);
+	useEffect(() => {
+		console.error('大家好！！！');
+	}, [count]);
+
+	const count2 = useMemo(() => {
+		console.error('useMemo 222');
+		return count;
+	}, []);
+
+	console.error(count2);
+
 	return (
 		<button
 			onClick={e => {
-                console.error(count, '+++++')
+				console.error(count, '+++++');
 				changeState(count + 1);
 				changeState(count + 2);
 			}}

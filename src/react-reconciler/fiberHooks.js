@@ -1,8 +1,8 @@
 import ReactSharedInternals from '../shared/ReactSharedInternals';
 import {
 	Update as UpdateEffect,
-    Passive as PassiveEffect,
-    NoEffect as NoHookEffect,
+	Passive as PassiveEffect,
+	NoEffect as NoHookEffect,
 } from '../shared/ReactSideEffectTags';
 import { NoWork } from './expirationTime';
 import {
@@ -381,6 +381,57 @@ function updateEffectImpl(fiberEffectTag, hookEffectTag, create, deps) {
 	hook.memoizedState = pushEffect(hookEffectTag, create, destroy, nextDeps);
 }
 
+function mountMemo(nextCreate, deps) {
+	const hook = mountWorkInProgressHook();
+	const nextDeps = deps === undefined ? null : deps;
+	const nextValue = nextCreate();
+
+	hook.memoizedState = [nextValue, nextDeps];
+	return nextValue;
+}
+
+function mountCallback(callback, deps) {
+	const hook = mountWorkInProgressHook();
+	const nextDeps = deps === undefined ? null : deps;
+	hook.memoizedState = [callback, nextDeps];
+	return callback;
+}
+
+function updateMemo(nextCreate, deps) {
+	const hook = updateWorkInProgressHook();
+	const nextDeps = deps === undefined ? null : deps;
+	const prevState = hook.memoizedState;
+	if (prevState !== null) {
+		// Assume these are defined. If they're not, areHookInputsEqual will warn.
+		if (nextDeps !== null) {
+			const prevDeps = prevState[1];
+			if (areHookInputsEqual(nextDeps, prevDeps)) {
+                console.error(nextDeps, prevDeps, 'nextDeps, prevDeps')
+				return prevState[0];
+			}
+		}
+	}
+	const nextValue = nextCreate();
+	hook.memoizedState = [nextValue, nextDeps];
+	return nextValue;
+}
+
+function updateCallback(callback, deps) {
+	const hook = updateWorkInProgressHook();
+	const nextDeps = deps === undefined ? null : deps;
+	const prevState = hook.memoizedState;
+	if (prevState !== null) {
+		if (nextDeps !== null) {
+			const prevDeps = prevState[1];
+			if (areHookInputsEqual(nextDeps, prevDeps)) {
+				return prevState[0];
+			}
+		}
+	}
+	hook.memoizedState = [callback, nextDeps];
+	return callback;
+}
+
 function updateEffect(create, deps) {
 	return updateEffectImpl(
 		UpdateEffect | PassiveEffect,
@@ -456,10 +507,14 @@ const HooksDispatcherOnMount = {
 	readContext,
 	useState: mountState,
 	useEffect: mountEffect,
+	useMemo: mountMemo,
+	useCallback: mountCallback,
 };
 
 const HooksDispatcherOnUpdate = {
 	readContext,
 	useState: updateState,
 	useEffect: updateEffect,
+	useMemo: updateMemo,
+	useCallback: updateCallback,
 };
