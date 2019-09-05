@@ -53,9 +53,85 @@ function ChildReconciler(shouldTrackSideEffects) {
 		return null;
 	}
 
+	function updateTextNode(returnFiber, current, textContent, expirationTime) {
+		if (current === null || current.tag !== HostText) {
+			const created = createFiberFromText(
+				textContent,
+				returnFiber.mode,
+				expirationTime,
+			);
+			created.return = returnFiber;
+			return created;
+		} else {
+			// update
+			const existing = useFiber(current, textContent, expirationTime);
+			existing.return = returnFiber;
+
+			return existing;
+		}
+	}
+
+	function updateElement(returnFiber, current, element, expirationTime) {
+		if (current !== null && current.elementType === element.type) {
+			// type 相同
+			const existing = useFiber(current, element.props, expirationTime);
+			existing.ref = coerceRef(returnFiber, current, element);
+
+			existing.return = returnFiber;
+
+			return existing;
+		} else {
+			const created = createFiberFromElement(
+				element,
+				returnFiber.mode,
+				expirationTime,
+			);
+			created.return = returnFiber;
+			return created;
+		}
+	}
+
+	function updateSlot(returnFiber, oldFiber, newChild, expirationTime) {
+		const key = oldFiber !== null ? oldFiber.key : null;
+
+		if (typeof newChild === 'string' || typeof newChild === 'number') {
+			if (key !== null) {
+				return null;
+			}
+
+			return updateTextNode(
+				returnFiber,
+				oldFiber,
+				'' + newChild,
+				expirationTime,
+			);
+		}
+
+		if (typeof newChild === 'object' && newChild !== null) {
+			switch (newChild.$$typeof) {
+				case REACT_ELEMENT_TYPE: {
+					if (newChild.key === key) {
+						if (newChild.type === REACT_FRAGMENT_TYPE) {
+							// todo
+							return null;
+						}
+						return updateElement(
+							returnFiber,
+							oldFiber,
+							newChild,
+							expirationTime,
+						);
+					}
+				}
+			}
+		}
+	}
+
 	function useFiber(fiber, pendingProps, expirationTime) {
 		// We currently set sibling to null and index to 0 here because it is easy
-		// to forget to do before returning it. E.g. for the single child case.
+        // to forget to do before returning it. E.g. for the single child case.
+        
+        // 重用之前的fiber 更新 props 和 过期时间
 		const clone = createWorkInProgress(fiber, pendingProps, expirationTime);
 		clone.index = 0;
 		clone.sibling = null;
@@ -138,8 +214,41 @@ function ChildReconciler(shouldTrackSideEffects) {
 
 		for (; oldFiber !== null && newIdx < newChildren.length; newIdx++) {
 			// TODO 第一渲染 oldFiber为null
-			if (oldFiber) {
+			if (oldFiber.index > newIdx) {
+				nextOldFiber = oldFiber;
+				oldFiber = null;
+			} else {
+				nextOldFiber = oldFiber.sibling;
 			}
+
+			const newFiber = updateSlot(
+				returnFiber,
+				oldFiber,
+				newChildren[newIdx],
+				expirationTime,
+			);
+
+			if (newFiber === null) {
+                if (oldFiber === null) {
+                    oldFiber = nextOldFiber
+                }
+                break
+            }
+
+            if (shouldTrackSideEffects) {
+                if (oldFiber && newFiber.alternate === null) {
+                    // 不能重用的 标记删除
+                    deleteChild(returnFiber, oldFiber)
+                }
+            }
+            lastPlacedIndex = placeChild(newFiber, lastPlacedIndex, newIdx)
+            if (previousNewFiber === null) {
+                resultingFirstChild = newFiber
+            } else {
+                previousNewFiber.sibling = newFiber
+            }
+            previousNewFiber = newFiber
+            oldFiber = nextOldFiber
 		}
 		if (newIdx === newChildren.length) {
 			// 已经遍历完毕 都可以重用 标记需要删除的没人

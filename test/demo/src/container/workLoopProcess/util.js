@@ -101,8 +101,10 @@ export function performCode(str) {
 
 const filterColor = 'rgb(10, 100, 10)';
 const textColor = 'rgb(255, 255, 255)';
-const rectHeight = 40;
-const rectWidth = 40;
+const rectHeight = 50;
+const rectWidth = 50;
+// const rectHeight = 40;
+// const rectWidth = 40;
 const lineHeight = 50;
 const lineWidth = 50;
 const gapWidth = 5;
@@ -118,10 +120,12 @@ const arrowLineOffset = 5;
 const lineStrokeColor = '#e9e9e9';
 
 export const statusColorMap = {
-    beginWork: 'rgb(10, 100, 10)',
-    completeWork: 'rgb(250, 60, 8)',
-    completeUnitOfWork: 'rgb(0, 0, 250)',
+    beginWork: 'rgb(51, 90, 175)',
+    completeUnitOfWork: 'rgb(222, 112, 28)',
+    completeWork: 'rgb(23, 169, 68)',
 }
+
+const delayTime = 500
 
 /**
  *
@@ -175,8 +179,10 @@ function drawRect(ctx, { x, y, w, h, color = filterColor, text, phase }) {
 
 	// 写文字
 	ctx.fillStyle = textColor;
-	const yoffset = rectHeight / 2;
-	ctx.fillText(text, x + rectWidth / 2 - 20, y + yoffset, rectWidth);
+    const yoffset = rectHeight / 2;
+    const xoffset = x
+    ctx.font = "16px Georgia";
+	ctx.fillText(text, xoffset, y + yoffset, rectWidth);
 }
 
 function drawArrow(ctx, { direction, x, y }) {
@@ -342,7 +348,7 @@ export async function draw(list, context) {
         pX = x
         pY = y
         setFiberDrawInfo(fiber, x, y, phase)
-        await delay(300)
+        await delay(delayTime)
         prevNode = fiber
     }
 }

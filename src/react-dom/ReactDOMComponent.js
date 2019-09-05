@@ -279,7 +279,6 @@ export function diffProperties(
 		} else if (propKey === DANGEROUSLY_SET_INNER_HTML) {
 			// TOOD
 		} else if (propKey === CHILDREN) {
-			console.error(lastProp, nextProp, 'xxxxxxxx');
 			if (
 				lastProp !== nextProp &&
 				(typeof nextProp === 'string' || typeof nextProp === 'number')

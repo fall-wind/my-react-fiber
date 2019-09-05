@@ -1,42 +1,29 @@
-// import WorkLoopContainer from './container/workLoopProcess/'
+import WorkLoopContainer from './container/workLoopProcess/';
 
-import React from './component';
-import { ReactDOM } from './component';
-const { useState, useEffect, useMemo } = React;
+// import React from './component';
+// import { ReactDOM } from './component';
+// const { useState, useEffect, useMemo } = React;
 
-function Button(props) {
-	const [count, changeState] = useState(1);
-	useEffect(() => {
-		console.error('大家好！！！');
-	}, [count]);
+// function CounterButton(props) {
+// 	const [count, changeState] = useState(1);
+// 	console.error(`current state count: ${count}`);
+// 	return (
+// 		<div>
+// 			<div>{count}</div>
+// 			<button
+// 				onClick={() => {
+// 					console.error(`current event count: ${count}`);
+// 					changeState(count + 1);
+// 				}}
+// 			>
+// 				add
+// 			</button>
+// 		</div>
+// 	);
+// }
 
-	const count2 = useMemo(() => {
-		console.error('useMemo 222');
-		return count;
-	}, []);
+// function App(props) {
+// 	return <CounterButton key="12" />;
+// }
 
-	console.error(count2);
-
-	return (
-		<button
-			onClick={e => {
-				console.error(count, '+++++');
-				changeState(count + 1);
-				changeState(count + 2);
-			}}
-		>
-			{count}
-		</button>
-	);
-}
-
-function App(props) {
-	return (
-		<div>
-			<Button key="1" label="确定" />
-			<Button key="2" label="取消" />
-		</div>
-	);
-}
-
-ReactDOM.render(<App />, document.getElementById('app'));
+// ReactDOM.render(<App />, document.getElementById('app'));

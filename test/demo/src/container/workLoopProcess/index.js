@@ -84,18 +84,23 @@ function WorkLoopShow(props) {
 }
 
 const initStr = `
-function Button(props) {
-    const { label } = props
-    return <button>{label}</button>
+function Counter(props) {
+	return (
+		<div>
+            <span>{props.count}</span>
+			<button
+				onClick={() => {
+					console.log('l am button')
+				}}
+			>
+				add
+			</button>
+		</div>
+	);
 }
 
 function App(props) {
-    return (
-        <div>
-            <Button key="1" label="确定" />
-            <Button key="2" label="取消" />
-        </div>
-    )
+	return <Counter count="12" key="12" />;
 }
 
 ReactDOM.render(<App />, document.getElementById('App'))`;

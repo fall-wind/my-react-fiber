@@ -1,55 +1,3 @@
-注：理解react实现 并精简成可用的react 功能一步步实现（command + c）
-
-## 4-24
-- [x] currentTime
-- [x] expirationTime
-- [x] update updateQueue
-
-近期：
-
-- [ ] scheduler work
-
-```mermaid
-graph TD
-scheduleRootUpdate --> schedulerWork;
-schedulerWork--> scheduleWorkToRoot;
-scheduleWorkToRoot --> requestWork;
-requestWork --> addRootToSchedule;
-addRootToSchedule --> performWork;
-performWork --> performWorkOnRoot;
-performWorkOnRoot --> renderRoot;
-renderRoot --> completeRoot;
-renderRoot --> workLoop;
-workLoop --> performUnitOfWork;
-performUnitOfWork --> beginWork;
-beginWork --> completeUnitOfWork;
-completeUnitOfWork --> completeWork;
-completeWork --> onComplete;
-
-completeRoot --> commitRoot;
-commitRoot --> prepareForCommit;
-prepareForCommit --> commitBeforeMutationLifecycles;
-commitBeforeMutationLifecycles --> commitAllHostEffects;
-commitAllHostEffects --> commitAllLifeCycles;
-commitAllLifeCycles --> onCommitRoot;
-onCommitRoot --> onCommit;
-```
-
-tmp
-
-// 在浏览器事件中 使用同一个时间
-
-
-TODO: 追踪交互数据
-
-flushPassiveEffects ？
-
-
-
-## completeWork
-
-appendAllChildren
-
 如下的react组件
 
 ```
@@ -313,10 +261,16 @@ executionContext 表示当前处于的阶段
 - CommitContext
 
 
-新的调度 如何处理一个回调里的两次更新
+## 新的调度 如何处理一个事件中的两次更新
+事件回调的调用被包裹在一个discetupdate中  
+每次更新事件计算完更新后 调用一次scheduleWork，但调度系统不会执行renderRoot renderRoot会在回调之后调用。
 
-如何更新dom
+## hooks更新fiber过程
 
-hooks组件的更新过程
+1. 在beginwork的时候 更新fiber 的 pendingProps属性
+2. 在completeWork时 diff props计算出 updatePayload
+3. 在commitWork的时候 commitMutationEffects --> commitWork --> commitUpdate --> updateFiberProps && updateProperties 应用变更到dom 上并更新domElement上的 props
+
+## hooks组件的更新过程
 - useState
 - useEffect

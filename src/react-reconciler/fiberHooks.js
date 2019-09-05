@@ -178,8 +178,7 @@ function mountState(initialState) {
 		null,
 		currentlyRenderingFiber,
 		queue,
-	));
-
+    ));
 	return [hook.memoizedState, dispatch];
 }
 
@@ -260,7 +259,7 @@ function updateReducer(reducer, initialArg, init) {
 				// 	update.suspenseConfig,
 				// );
 				if (update.eagerReducer === reducer) {
-					newState = update.eagerReducer;
+					newState = update.eagerState;
 				} else {
 					const action = update.action;
 					newState = reducer(newState, action);
@@ -286,8 +285,8 @@ function updateReducer(reducer, initialArg, init) {
 		queue.lastRenderedState = newState;
 	}
 
-	const dispatch = queue.dispatch;
-
+    const dispatch = queue.dispatch;
+    console.error(hook, 'hook...')
 	return [hook.memoizedState, dispatch];
 }
 
