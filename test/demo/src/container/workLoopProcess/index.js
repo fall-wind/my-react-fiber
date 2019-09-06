@@ -138,6 +138,9 @@ function WorkLoopProcess() {
 			<button onClick={handleExecution} className="execution-btn">
 				执行
 			</button>
+            <footer className="footer-warning">
+                目前仅支持FunctionComponent（不包含hooks）, HostComponent组件，节点少一些 未考虑样式兼容，多多包涵！
+            </footer>
 		</div>
 	);
 }
