@@ -1,28 +1,30 @@
-React的第一次渲染过程浅析
+# React的第一次渲染过程浅析
 
-本篇文章暂时讨论`Sync`模式（同步）,源码为[16.9](https://github.com/facebook/react/tree/v16.9.0)，部分源码内容不讨论。
+本篇文章暂时讨论`Sync`模式（同步）,源码为[16.9](https://github.com/facebook/react/tree/v16.9.0)，部分源码内容不讨论（hooks classComponent等等相关的代码）。
+
+## a demo
 
 先看一段react的代码
 
 ```javascript
 import React from 'react'
 function Counter(props) {
-	return (
-		<div>
-			<div>{props.count}</div>
-			<button
-				onClick={() => {
-					console.log('l am button')
-				}}
-			>
-				add
-			</button>
-		</div>
+  return (
+	  <div>
+		  <div>{props.count}</div>
+		  <button
+			  onClick={() => {
+				  console.log('l am button')
+			  }}
+		  >
+			  add
+		  </button>
+	  </div>
 	);
 }
 
 function App(props) {
-	return <Counter count="12" key="12" />;
+  return <Counter count="12" key="12" />;
 }
 
 ReactDOM.render(<App />, document.getElementById('app'));
@@ -47,7 +49,7 @@ function App(props) {
 }
 ```
 
-**创建fiberRoot**
+## 创建fiberRoot
 
 传入`ReactDOM.render`函数的三个参数`element`、 `container`、`callback`
 
@@ -130,6 +132,8 @@ const CommitContext = /*                */ 0b100000;
 `executionContext &= ~BatchedContext`则代表把当前上下文的`BatchedContext`标志位置为false，表示当前为非批量更新
 
 在react源码中有很多类似的位运算，比如effectTag，workTag。
+
+## reconciler（调和）
 
 **updateContainer**
 
@@ -218,7 +222,7 @@ function scheduleRootUpdate(
 
 调用`scheduleWork`进入到调度阶段。
 
-## 调度阶段
+## scheduleWork（调度阶段）
 
 ```javascript
 // ReactFiberWorkLoop.js
@@ -296,9 +300,7 @@ function renderRoot(root, expirationTime) {
 function prepareFreshStack(root, expirationTime) {
   root.finishedWork = null;
   root.finishedExpirationTime = NoWork;
-
   ...
-
   workInProgressRoot = root;
   workInProgress = createWorkInProgress(root.current, null, expirationTime);
   renderExpirationTime = expirationTime;
@@ -330,6 +332,8 @@ if (workInProgress !== null) {
 
 此时的`workInProgress`为刚创建的那个节点。接着为当前的上下文添加`RenderContext`，标志着进入render阶段。
 `hooks-related`这部分代码是与hooks先关的代码，在这过程中用户调用hooks相关的API都不是在`FunctionComponent`的内部，所以都会报错。
+
+## render阶段
 
 ```javascript
 function workLoopSync() {
@@ -380,7 +384,7 @@ function performUnitOfWork(unitOfWork) {
 2. 当前节点置为 父节点，父节点是否存在 存在，转到1；否则返回null
 
 当然这两个过程所得工作不仅仅就是这样。
-**beginWork**
+### beginWork
 
 ```javascript
 // ReactFiberBeginWork.js
@@ -822,7 +826,7 @@ function reconcileChildrenArray(
 此时回到workLoop的`performUnitOfWork`，因为next为null，则进行下一步 `completeUnitOfWork`。
 
 
-**completeUnitOfWork**
+### completeUnitOfWork
 
 ```javascript
 function completeUnitOfWork(unitOfWork) {
@@ -1074,7 +1078,7 @@ if (
 }
 ```
 
-将span节点的 effectList归并到父组件上（但此时span fiber上并没有effect）。
+将span节点的 effectList归并到父组件上（但此时span fiber上并没有effect）, 此时子组件没有任何effect，且 effectTag 为 0。
 
 ```javascript
 /* completeUnitOfWork-code-02 */
@@ -1134,5 +1138,279 @@ div的child为 span且满足 `condition 01`，将span添加到div上，轮到but
 `condition 04`处 是当前的返回出口：找到最后一个sibling，在向上查找到 div节点 返回。
 
 我们实际应用中，上述的 div>span-button 算是最简单操作。有很多想 div 与 span、button 又隔了一层Function/Class Component。此时就需要利用到
-`condition 03` 继续向child查找，查找各个分支到workInProgress相邻最近的host节点，将他们添加到workInProgress对应的dom上，这样dom树才能完整构成。
+`condition 03` 继续向child查找，查找各个分叉向下距离`workInProgress`最近的host节点，将他们添加到`workInProgress`对应的dom上，这样dom树才能完整构成。
 
+这样 div`completeWork`就完成了，继续到`Counter`组件：
+
+`Component`组件的`completeWork`是直接被`break`，所以这里只需要将effectList归并到父节点。
+
+由`/* completeUnitOfWork-code-02 */`节点到`Counter`的returnFiber`App` 节点，App节点与其他节点不同的地方在于其`effectTag`为3。这是怎么来的尼？还记得我们的 root fiber节点在`beginWork`时与其他节点不同的地方在于：它是有 `current`节点的，所以作为children的App，在[`placeSingleChild`](https://github.com/facebook/react/blob/v16.9.0/packages/react-reconciler/src/ReactChildFiber.js#L348)的时候`effectTag`被添加了`Placement`，在`beginWork`的[`mountIndeterminateComponent`](https://github.com/facebook/react/blob/v16.9.0/packages/react-reconciler/src/ReactFiberBeginWork.js#L1293)时，`Component`组件的`effectTag`被添加了`PerformedWork`。
+
+回归一下`/* completeUnitOfWork-code-01 */`处代码，只有到App满足`effectTag > PerformedWork`，在之前出现的 host 节点的`effectTag` 都为0，`Function`节点都为 1（`PerformedWork`），都不符合添加effect的要求。所以到此时才有一个`effect`，它被添加到了root Fiber上。
+
+root fiber的`completeWork`，它的`tag`为 `HostRoot`
+
+```javascript
+// ReactFiberCompleteWork.js
+
+updateHostContainer = function (workInProgress) {
+  // Noop
+};
+
+case HostRoot: {
+  ...
+  if (current === null || current.child === null) {
+    workInProgress.effectTag &= ~Placement;
+  }
+  // updateHostContainer(workInProgress)
+}
+```
+
+这里current.child为null，因为我们之前beginWork时，改变的是workInProgress节点，这里将`Placement effectTag`取消。结束 completeWork。
+
+这时我们已经到达了root节点，做一些收尾工作
+
+```javascript
+// ReactWorkLoop.js
+function completeUnitOfWork(unitOfWork) {
+  workInProgress = unitOfWork
+  do {
+
+  } while (workInProgress !== null)
+
+  if (workInProgressRootExitStatus === RootIncomplete) {
+    workInProgressRootExitStatus = RootCompleted;
+  }
+  return null;
+}
+```
+
+`workLoopSync`结束之后，将执行上下文由`RenderContext`重置为上次的执行环境
+```javascript
+root.finishedWork = root.current.alternate;
+root.finishedExpirationTime = expirationTime;
+```
+之后将`workLoop`所做的工作添加到root的`finishedWork`上
+
+`workLoopSync`部分， 也可以成为render阶段到此结束。回顾一下在此期间所做的主要工作。
+
+- 创建各个节点对应的workInProgress fiber节点
+- 创建dom节点，设置属性，连接构成dom树（并未append到container上）
+- 为节点打上effectTag，构建完整的effectList链表，从叶子节点归并到root fiber节点上。
+
+## commit阶段
+
+继续回来`renderRoot`
+```javascript
+function commitRoot() {
+  ...
+  workInProgressRoot = null
+
+  switch (workInProgressRootExitStatus) {
+    case RootComplete: {
+      ...
+      return commitRoot.bind(null, root);
+    }
+  }
+}
+```
+
+将`workInProgressRoot`置为null，在completeWork时将`workInProgressRootExitStatus`置为了`RootCompleted`，之后进入commitRoot阶段。
+
+
+
+暂不讨论优先级调度相关的代码,[完整代码戳我](https://github.com/facebook/react/blob/v16.9.0/packages/react-reconciler/src/ReactFiberWorkLoop.js#L1515) 这里看成：
+```javascript
+function commitRoot(root) {
+  commitRootImpl.bind(null, root, renderPriorityLevel)
+  if (rootWithPendingPassiveEffects !== null) {
+    flushPassiveEffects();
+  }
+  return null;
+}
+```
+
+- commitBeforeMutationEffects
+- commitMutationEffects
+- commitLayoutEffects
+commitRoot源码主要内容是以上遍历`effectList`的三个循环，看看他们做了什么吧
+
+```JavaScript
+
+let nextEffect = null
+
+function commitRootImpl(root, renderPriorityLevel) {
+	const finishWork = root.finishWork
+	const expirationTime = root.finishedExpirationTime
+	...
+
+	root.finishedWork = null;
+	root.finishedExpirationTime = NoWork;
+	
+	let firstEffect
+	if (finishedWork.effectTag > PerformedWork) {
+		// 将自身effect添加到effect list上
+		...
+	}
+
+	if (firstEffect !== null) {
+		const prevExecutionContext = executionContext;
+		executionContext |= CommitContext;
+		
+		do {
+			try {
+				commitBeforeMutationEffects();
+			} catch (error) {
+				..
+			}
+		} while (nextEffect !== null)
+
+		...
+
+		...
+		nextEffect = null;
+		executionContext = prevExecutionContext;
+	}
+
+}
+```
+
+先获取effectList，在render阶段生成的effect list并不包含自身的effect，这里先添加（但此时finishedWork.effectTag其实为0），获取完整的effectList。
+之后把当前的执行上下文置为`CommitContext`, 正式进入commit阶段。
+
+此时`effectList`其实就是App节点的`workInProgress fiber`。这里有一个全局变量`nextEffect`表示当前正在处理的effect
+
+**commitBeforeMutationEffects**
+
+```javascript
+function commitBeforeMutationEffects() {
+	while (nextEffect !== null) {
+		if ((nextEffect.effectTag & Snapshot) !== NoEffect) {
+			...
+			const current = nextEffect.alternate;
+			commitBeforeMutationEffectOnFiber(current, nextEffect);
+			...
+		}
+		nextEffect = nextEffect.nextEffect;
+  }
+}
+```
+
+这个App fiber上的`effectTag`为 3 （Placement | Update）,这个循环直接跳过了
+
+```javascript
+function commitMutationEffects() {
+	while (nextEffect !== null) {
+		const effectTag = nextEffect.effectTag
+		...
+
+		let primaryEffectTag = effectTag & (Placement | Update | Deletion)
+
+		switch (primaryEffectTag) {
+			...
+			case PlacementAndUpdate: {
+				commitPlacement(nextEffect)
+				nextEffect.effectTag &= ~Placement;
+
+        // Update
+        const current = nextEffect.alternate;
+        commitWork(current, nextEffect);
+			}
+		}
+
+		nextEffect = nextEffect.nextEffect;
+	}
+}
+```
+
+**commitPlacement**
+
+[`commitPlacement`](https://github.com/facebook/react/blob/v16.9.0/packages/react-reconciler/src/ReactFiberCommitWork.js#L995)主要是把dom元素添加到对应的父节点上，对于第一次渲染其实也只是将div添加到`div#app`上。并将当前的`effectTag update`去掉。
+
+
+**commitWork**
+```javascript
+// ReactFiberCommitWork.js
+function commitWork(current, finishedWork) {
+	switch (finishedWork.tag) {
+		case FunctionComponent:
+    case ForwardRef:
+    case MemoComponent:
+    case SimpleMemoComponent: {
+      // Note: We currently never use MountMutation, but useLayout uses
+      // UnmountMutation.
+      commitHookEffectList(UnmountMutation, MountMutation, finishedWork);
+			return;
+		
+		case HostComponent: {
+			...
+		}
+	}
+}
+
+```
+
+这里commitWork有涉及到hook组件的部分，这里暂时跳过。
+对于 host组件其实是有前后props diff的部分，这里是第一次渲染，所以也就不存在，所以这里也没有多少第一渲染需要做的工作。
+
+**commitLayoutEffects**
+```javascript
+// ReactFiberWorkLoop.js
+
+import { commitLifeCycles as commitLayoutEffectOnFiber } from 'ReactFiberCommitWork'
+
+function commitLayoutEffects() {
+	while (nextEffect !== null) {
+		const effectTag = nextEffect.effectTag;
+		if (effectTag & (Update | Callback)) {
+      recordEffect();
+      const current = nextEffect.alternate;
+      commitLayoutEffectOnFiber(
+        root,
+        current,
+        nextEffect,
+        committedExpirationTime,
+      );
+		}
+		...
+		nextEffect = nextEffect.nextEffect
+	}
+	...
+}
+```
+
+App fiber上的effectTag现在剩下1(PerformedWork)，并不符合所以当当循环也跳出。顺便一提，如果我们的ReactDOM.render有callback的话 将会在这里执行。
+
+	三个循环结束之后将nextEffect置为null；执行上下文变更成之前的执行上下文。
+
+```javascript
+function commitRootImpl() {
+	...
+	if ((executionContext & LegacyUnbatchedContext) !== NoContext) {
+    return null;
+	}
+}
+```
+现在我们的执行上下文还剩下在`upbatchedUpdate`添加的`LegacyUnbatchedContext`，所以这里直接返回。到这里我们第一渲染过程到这也就基本结束了。
+
+总结一下commit工作：
+
+1. 处理beginWork产出 finishedWork的effectList
+2. 将dom添加到屏幕上（div#app container）
+3. callback调用
+4. hooks相关逻辑（未涉及）
+5. classComponent的生命周期逻辑（未涉及）
+6. 其他
+
+本文在走源码的时候也有有许多部分没有涵盖 或者直接跳过的地方：
+
+- 更新过程 hooks组件更新 classComponent setState更新
+- Hooks
+- ClassComponent、 SimpleMemoComponent、HostPortal、SuspenseComponent、SuspenseListComponent等
+- 事件相关
+- context ref 等
+- scheduler模块
+- 其他
+
+## 尾声
+本文是笔者跟着源码debugger写出来的文章，对于缺失的部分，计划慢慢会有对应的介绍部分。另外本文属于流水账类型的文章，分析部分非常少，忘大家多多包涵、提提意见，你的参与就是我的动力。
