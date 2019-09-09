@@ -167,5 +167,4 @@ accTime(249) === accTime(250)
 - pendingPassiveEffectsExpirationTime
 
 
-PassiveEffects消极的影响？
 

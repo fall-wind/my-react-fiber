@@ -1,3 +1,6 @@
+read react16.x sourse code and try to wirte a simple react with hooks, async update, etc.
+Rolled up my sleeves is doing -- 撸起袖子就是干
+
 # 初衷
 
 百见不如一干，撸起袖子就是干。虽说最好的理解是重新实现一个react，奈何能力有限，所以只能从头‘抄’一个react
