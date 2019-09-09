@@ -4,7 +4,7 @@ const path = require('path');
 const webpack = require('webpack');
 // const CleanWebpackPlugin = require('clean-webpack-plugin');
 
-const targetPath = path.join(__dirname, '../../docs')
+const targetPath = path.join(__dirname, '../../')
 
 const webpackConfig = {
     mode: 'production',
@@ -14,7 +14,8 @@ const webpackConfig = {
         // vendor: ['react', 'react-dom', 'react-router', 'redux', 'echarts', 'antd'],
     },
 	output: {
-		path: path.join(__dirname, './dist'),
+		path: targetPath,
+		// path: path.join(__dirname, './dist'),
 	},
 	plugins: [
         // new CleanWebpackPlugin(path.join(__dirname, './dist'), {
