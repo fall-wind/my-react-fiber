@@ -4,6 +4,8 @@ const path = require('path');
 const webpack = require('webpack');
 // const CleanWebpackPlugin = require('clean-webpack-plugin');
 
+const targetPath = path.join(__dirname, '../../docs')
+
 const webpackConfig = {
     mode: 'production',
     devtool: 'hidden-source-map',
