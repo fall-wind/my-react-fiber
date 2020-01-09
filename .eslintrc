@@ -1,0 +1,71 @@
+{
+    "extends": "airbnb",
+    "parser": "babel-eslint",
+    "plugins": [
+      "react",
+      "react-hooks"
+    ],
+    "globals": {
+      "DingTalkPC": false,
+      "window": true,
+      "location": true,
+      "sessionStorage": true,
+      "__LOCAL__": true
+    },
+    "overrides": [{
+        "files": ["src/*.js"]
+    }],
+    "parserOptions": {
+      "ecmaVersion": 6,
+      "sourceType": "module",
+      "ecmaFeatures": {
+        "jsx": true,
+        "experimentalDecorators": true
+      }
+    },
+    "env": {
+      "browser": true,
+      "amd": true,
+      "es6": true,
+      "node": true,
+      "mocha": true
+    },
+    "rules": {
+      "comma-dangle": ["error", {
+        "arrays": "always-multiline",
+        "objects": "ignore",
+        "imports": "always-multiline",
+        "exports": "always-multiline",
+        "functions": "ignore"
+      }],
+      "indent": [1, 4],
+      "semi": 0,
+      "class-methods-use-this": 1,
+      "prefer-destructuring": 1,
+    //   "react/jsx-indent": [2, 4],
+      "react/jsx-indent": 0,
+      "jsx-a11y/anchor-is-valid": 0,
+    //   "react/jsx-indent-props": [2, 4],
+      "react/jsx-indent-props": 0,
+      "react/jsx-filename-extension": 0,
+      "react/prop-types": 1,
+      "react/forbid-prop-types": 0,
+      "jsx-a11y/click-events-have-key-events": 0,
+    //   "arrow-parens": [1, "as-needed"],
+      "arrow-parens": 0,
+      "import/no-unresolved": 0,
+      "import/extensions": 0,
+      "func-names": 1,
+      "no-plusplus": 0,
+      "no-self-compare": 0,
+      "react/no-multi-comp": 0,
+      "jsx-a11y/no-static-element-interactions": 0,
+      "no-unused-expressions": 0,
+      "no-restricted-syntax": 0,
+      "react/jsx-closing-tag-location": 0,
+      "react/jsx-no-duplicate-props": 0,
+      "object-curly-spacing": 1,
+      "import/no-extraneous-dependencies": 0,
+    }
+  }
+  
